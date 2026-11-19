@@ -12,11 +12,10 @@ import { ClipLoader } from "react-spinners";
 const DeliveryBoy = () => {
   const { userData, socket } = useSelector((state) => state.user);
   const [currentOrder, setCurrentOrder] = useState();
-  const [showOtpBox, setShowOtpBox] = useState(false);
   const [availableAssignments, setAvailableAssignments] = useState(null);
-  const [otp, setOtp] = useState("");
   const [todayDeliveries, setTodayDeliveries] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deliveryError, setDeliveryError] = useState("");
   const [myLocation, setMyLocation] = useState(null);
 
   useEffect(() => {
@@ -50,7 +49,7 @@ const DeliveryBoy = () => {
   }, [socket, userData?._id]);
 
     const ratePerDelivery = 50;
-    const totalEarnings = (todayDeliveries || []).reduce((sum, d) => sum + (d.count * ratePerDelivery), 0);
+    const totalEarnings = (todayDeliveries || []).reduce((sum, d) => sum + ((d?.count || 0) * ratePerDelivery), 0);
 
   const getAssignments = async () => {
     try {
@@ -90,55 +89,25 @@ const DeliveryBoy = () => {
     }
   };
 
-  const sendOtp = async () => {
+  const markDelivered = async () => {
     if (!currentOrder?._id || !currentOrder?.shopOrder?._id) {
-      alert("No active order found to deliver.");
+      setDeliveryError("No active order found to deliver. Please refresh and try again.");
       return;
     }
+
     setLoading(true);
+    setDeliveryError("");
     try {
-      const result = await axios.post(
-        `${serverUrl}/api/order/send-delivery-otp`,
+      await axios.patch(
+        `${serverUrl}/api/order/mark-delivered`,
         { orderId: currentOrder._id, shopOrderId: currentOrder.shopOrder._id },
         { withCredentials: true }
       );
-      setShowOtpBox(true);
-      getAssignments();
-      await getCurrentOrder();
+      setCurrentOrder(null);
+      await Promise.all([handleTodayDeliveries(), getAssignments()]);
     } catch (error) {
       console.error(error);
-      const errMsg = error?.response?.data?.message || "Failed to send delivery OTP. Please try again.";
-      alert(errMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyOtp = async () => {
-    if (!otp.trim()) {
-      alert("Please enter the OTP");
-      return;
-    }
-    setLoading(true);
-    try {
-      const result = await axios.post(
-        `${serverUrl}/api/order/verify-delivery-otp`,
-        {
-          orderId: currentOrder?._id,
-          shopOrderId: currentOrder?.shopOrder?._id,
-          otp: otp.trim(),
-        },
-        { withCredentials: true }
-      );
-      console.log(result.data);
-      setShowOtpBox(false);
-      setOtp("");
-      await handleTodayDeliveries();
-      getAssignments();
-      await getCurrentOrder();
-    } catch (error) {
-      console.error(error);
-      alert(error?.response?.data?.message || "Invalid or Expired OTP");
+      setDeliveryError(error?.response?.data?.message || "Could not mark this delivery as complete. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -203,10 +172,10 @@ const DeliveryBoy = () => {
         <div className="bg-white rounded-2xl shadow-md p-5 flex flex-col justify-start items-center w-[90%] border border-orange-100 text-center gap-3">
           <h1 className="text-lg md:text-xl font-bold text-[#ff4d2d] w-full truncate px-2">Today's Deliveries</h1>
 
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={200} minWidth={100} minHeight={200}>
             <BarChart data={todayDeliveries}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="hour" tickFormatter={(value) => `${value}:00`} />
+              <XAxis dataKey="hour" tickFormatter={(value) => (value != null ? `${value}:00` : "")} />
               <YAxis dataKey="count" allowDecimals={false} />
               <Tooltip formatter={(value) => [value, "Orders"]} labelFormatter={(value) => `Hour: ${value}`} />
               <Bar dataKey="count" fill="#ff4d2d" />
@@ -214,7 +183,7 @@ const DeliveryBoy = () => {
           </ResponsiveContainer>
 
           <div>
-            <p className="text-green-600 font-semibold">Total Deliveries: {(todayDeliveries || []).reduce((sum, d) => sum + d.count, 0)}</p>
+            <p className="text-green-600 font-semibold">Total Deliveries: {(todayDeliveries || []).reduce((sum, d) => sum + (d?.count || 0), 0)}</p>
             <p className="text-green-600 font-semibold">Total Earnings: ₹{totalEarnings}</p>
           </div>
 
@@ -284,38 +253,18 @@ const DeliveryBoy = () => {
                   myLocation || currentOrder?.deliveryBoyLocation,
               }}
             />
-            {!showOtpBox ? (
-              <button
-                className="mt-4 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                onClick={sendOtp}
-                disabled={loading}
-              >
-                {loading ? <ClipLoader color="#fff" size={20} /> : "Mark as Delivered"}
-              </button>
-            ) : (
-              <div className="mt-4 p-4 border rounded-xl bg-gray-50">
-                <p className="text-sm font-semibold mb-2">
-                  Enter OTP Sent To{" "}
-                  <span className="text-orange-500">
-                    {currentOrder?.user?.fullName}
-                  </span>{" "}
-                </p>
-                <input
-                  type="text"
-                  placeholder="Enter OTP"
-                  className="w-full border rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  onChange={(e) => setOtp(e.target.value)}
-                  value={otp}
-                />
-                <button
-                  className="mt-2 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                  onClick={verifyOtp}
-                  disabled={loading}
-                >
-                  {loading ? <ClipLoader color="#fff" size={20} /> : "Submit OTP"}
-                </button>
-              </div>
+            {deliveryError && (
+              <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                {deliveryError}
+              </p>
             )}
+            <button
+              className="mt-4 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              onClick={markDelivered}
+              disabled={loading}
+            >
+              {loading ? <ClipLoader color="#fff" size={20} /> : "Mark as Delivered"}
+            </button>
           </div>
         )}
       </div>
