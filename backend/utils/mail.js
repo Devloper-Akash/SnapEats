@@ -36,8 +36,37 @@ export const sendDeliveryOtpMail = async (user, otp) => {
   if (!toEmail) {
     throw new Error("Customer email address is missing");
   }
+
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    const from = process.env.EMAIL_FROM?.trim();
+    if (!from) {
+      throw new Error("EMAIL_FROM must be set to a verified sender address when RESEND_API_KEY is configured");
+    }
+
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to: [toEmail],
+        subject: "Delivery OTP",
+        html: `<p>Your OTP for delivery is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
+      }),
+    });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Delivery email provider returned ${response.status}: ${details}`);
+    }
+    return;
+  }
+
   if (!process.env.EMAIL || !process.env.PASS) {
-    throw new Error("Server email configuration (EMAIL/PASS) is missing in environment variables");
+    throw new Error("Configure RESEND_API_KEY and EMAIL_FROM or provide SMTP credentials (EMAIL/PASS)");
   }
   await transporter.sendMail({
     from: process.env.EMAIL,

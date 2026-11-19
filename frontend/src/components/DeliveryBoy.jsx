@@ -12,10 +12,13 @@ import { ClipLoader } from "react-spinners";
 const DeliveryBoy = () => {
   const { userData, socket } = useSelector((state) => state.user);
   const [currentOrder, setCurrentOrder] = useState();
+  const [showOtpBox, setShowOtpBox] = useState(false);
   const [availableAssignments, setAvailableAssignments] = useState(null);
+  const [otp, setOtp] = useState("");
   const [todayDeliveries, setTodayDeliveries] = useState([]);
   const [loading, setLoading] = useState(false);
   const [deliveryError, setDeliveryError] = useState("");
+  const [deliveryMessage, setDeliveryMessage] = useState("");
   const [myLocation, setMyLocation] = useState(null);
 
   useEffect(() => {
@@ -89,25 +92,56 @@ const DeliveryBoy = () => {
     }
   };
 
-  const markDelivered = async () => {
+  const sendOtp = async () => {
     if (!currentOrder?._id || !currentOrder?.shopOrder?._id) {
-      setDeliveryError("No active order found to deliver. Please refresh and try again.");
+      setDeliveryError("No active order found. Please refresh and try again.");
       return;
     }
 
     setLoading(true);
     setDeliveryError("");
+    setDeliveryMessage("");
     try {
-      await axios.patch(
-        `${serverUrl}/api/order/mark-delivered`,
+      const result = await axios.post(
+        `${serverUrl}/api/order/send-delivery-otp`,
         { orderId: currentOrder._id, shopOrderId: currentOrder.shopOrder._id },
         { withCredentials: true }
       );
+      setShowOtpBox(true);
+      setOtp("");
+      setDeliveryMessage(result.data?.message || "OTP sent to the customer's registered email.");
+    } catch (error) {
+      console.error(error);
+      setDeliveryError(error?.response?.data?.message || "Failed to send the delivery OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (!otp.trim()) {
+      setDeliveryError("Enter the OTP sent to the customer.");
+      return;
+    }
+    setLoading(true);
+    setDeliveryError("");
+    try {
+      await axios.post(
+        `${serverUrl}/api/order/verify-delivery-otp`,
+        {
+          orderId: currentOrder?._id,
+          shopOrderId: currentOrder?.shopOrder?._id,
+          otp: otp.trim(),
+        },
+        { withCredentials: true }
+      );
+      setShowOtpBox(false);
+      setOtp("");
       setCurrentOrder(null);
       await Promise.all([handleTodayDeliveries(), getAssignments()]);
     } catch (error) {
       console.error(error);
-      setDeliveryError(error?.response?.data?.message || "Could not mark this delivery as complete. Please try again.");
+      setDeliveryError(error?.response?.data?.message || "Invalid or expired OTP. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -253,18 +287,57 @@ const DeliveryBoy = () => {
                   myLocation || currentOrder?.deliveryBoyLocation,
               }}
             />
+            {deliveryMessage && (
+              <p role="status" className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+                {deliveryMessage}
+              </p>
+            )}
             {deliveryError && (
               <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                 {deliveryError}
               </p>
             )}
-            <button
-              className="mt-4 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-              onClick={markDelivered}
-              disabled={loading}
-            >
-              {loading ? <ClipLoader color="#fff" size={20} /> : "Mark as Delivered"}
-            </button>
+            {!showOtpBox ? (
+              <button
+                className="mt-4 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                onClick={sendOtp}
+                disabled={loading}
+              >
+                {loading ? <ClipLoader color="#fff" size={20} /> : "Send OTP"}
+              </button>
+            ) : (
+              <div className="mt-4 rounded-xl border bg-gray-50 p-4">
+                <label htmlFor="delivery-otp" className="mb-2 block text-sm font-semibold">
+                  Enter the OTP provided by the customer
+                </label>
+                <input
+                  id="delivery-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={4}
+                  placeholder="4-digit OTP"
+                  className="w-full rounded-lg border p-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                  value={otp}
+                  disabled={loading}
+                />
+                <button
+                  className="mt-2 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                  onClick={verifyOtp}
+                  disabled={loading}
+                >
+                  {loading ? <ClipLoader color="#fff" size={20} /> : "Confirm Delivery"}
+                </button>
+                <button
+                  className="mt-2 w-full rounded-lg px-4 py-2 text-sm text-orange-600 hover:bg-orange-50 disabled:opacity-50"
+                  onClick={sendOtp}
+                  disabled={loading}
+                >
+                  Resend OTP
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

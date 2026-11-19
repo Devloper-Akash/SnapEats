@@ -645,6 +645,10 @@ export const sendDeliveryOtp = async (req, res) => {
     if (!orderId || !shopOrderId) {
       return res.status(400).json({ message: "orderId and shopOrderId are required" });
     }
+    const deliveryBoy = await User.findById(req.userId).select("role");
+    if (deliveryBoy?.role !== "deliveryBoy") {
+      return res.status(403).json({ message: "Only a delivery boy can request a delivery OTP" });
+    }
     const order = await Order.findById(orderId).populate("user");
     if (!order) {
       return res.status(404).json({ message: "Order Not Found" });
@@ -657,12 +661,33 @@ export const sendDeliveryOtp = async (req, res) => {
         .status(400)
         .json({ message: "Enter valid order/shopOrder Id" });
     }
+    const assignment = await deliveryAssignment.findOne({
+      order: order._id,
+      shopOrderId: shopOrder._id,
+      assignTo: req.userId,
+      status: "assigned",
+    });
+    if (
+      String(shopOrder.assignedDeliveryBoy) !== String(req.userId) ||
+      !assignment ||
+      shopOrder.status !== "out for delivery"
+    ) {
+      return res.status(403).json({ message: "This order is not actively assigned to you" });
+    }
+
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
     shopOrder.deliveryOtp = otp;
     shopOrder.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await order.save();
 
-    await sendDeliveryOtpMail(order.user, otp);
+    try {
+      await sendDeliveryOtpMail(order.user, otp);
+    } catch (error) {
+      shopOrder.deliveryOtp = null;
+      shopOrder.otpExpires = null;
+      await order.save();
+      throw error;
+    }
 
     return res
       .status(200)
@@ -680,6 +705,13 @@ export const sendDeliveryOtp = async (req, res) => {
 export const verifyDeliveryOtp = async (req, res) => {
   try {
     const { orderId, shopOrderId, otp } = req.body;
+    if (!orderId || !shopOrderId || !otp) {
+      return res.status(400).json({ message: "orderId, shopOrderId and OTP are required" });
+    }
+    const deliveryBoy = await User.findById(req.userId).select("role");
+    if (deliveryBoy?.role !== "deliveryBoy") {
+      return res.status(403).json({ message: "Only a delivery boy can verify a delivery OTP" });
+    }
     const order = await Order.findById(orderId).populate("user");
     if (!order) {
       return res.status(404).json({ message: "Order Not Found" });
@@ -691,6 +723,19 @@ export const verifyDeliveryOtp = async (req, res) => {
       return res
         .status(400)
         .json({ message: "Enter valid order/shopOrder Id" });
+    }
+    const assignment = await deliveryAssignment.findOne({
+      order: order._id,
+      shopOrderId: shopOrder._id,
+      assignTo: req.userId,
+      status: "assigned",
+    });
+    if (
+      String(shopOrder.assignedDeliveryBoy) !== String(req.userId) ||
+      !assignment ||
+      shopOrder.status !== "out for delivery"
+    ) {
+      return res.status(403).json({ message: "This order is not actively assigned to you" });
     }
     if (
       String(shopOrder.deliveryOtp).trim() !== String(otp).trim() ||
@@ -706,10 +751,8 @@ export const verifyDeliveryOtp = async (req, res) => {
     shopOrder.status = "delivered";
     shopOrder.deliveredAt = new Date();
     await order.save();
-    await deliveryAssignment.deleteOne({
-      shopOrderId: shopOrder._id,
-      order: orderId,
-    });
+    assignment.status = "completed";
+    await assignment.save();
 
     const io = req.app.get("io");
     if (io) {
@@ -736,87 +779,6 @@ export const verifyDeliveryOtp = async (req, res) => {
     return res
       .status(500)
       .json({ message: `Verify Delivery OTP Error ${error}` });
-  }
-};
-
-export const markOrderDelivered = async (req, res) => {
-  try {
-    const { orderId, shopOrderId } = req.body;
-    if (!orderId || !shopOrderId) {
-      return res.status(400).json({ message: "orderId and shopOrderId are required" });
-    }
-
-    const deliveryBoy = await User.findById(req.userId).select("role");
-    if (deliveryBoy?.role !== "deliveryBoy") {
-      return res.status(403).json({ message: "Only the assigned delivery boy can complete this delivery" });
-    }
-
-    const order = await Order.findById(orderId).populate("user", "socketId");
-    if (!order) {
-      return res.status(404).json({ message: "Order Not Found" });
-    }
-
-    const shopOrder = order.shopOrders.id
-      ? order.shopOrders.id(shopOrderId)
-      : order.shopOrders?.find((item) => String(item._id) === String(shopOrderId));
-    if (!shopOrder) {
-      return res.status(404).json({ message: "Shop order not found" });
-    }
-
-    const isAssignedToDeliveryBoy =
-      String(shopOrder.assignedDeliveryBoy) === String(req.userId);
-    if (!isAssignedToDeliveryBoy) {
-      return res.status(403).json({ message: "This order is not assigned to you" });
-    }
-
-    const assignment = await deliveryAssignment.findOne({
-      order: order._id,
-      shopOrderId: shopOrder._id,
-      assignTo: req.userId,
-      status: "assigned",
-    });
-
-    if (shopOrder.status !== "delivered" && !assignment) {
-      return res.status(409).json({ message: "This delivery is no longer active" });
-    }
-
-    if (shopOrder.status !== "delivered") {
-      shopOrder.status = "delivered";
-      shopOrder.deliveredAt = new Date();
-      shopOrder.deliveryOtp = null;
-      shopOrder.otpExpires = null;
-      await order.save();
-    }
-
-    if (assignment) {
-      assignment.status = "completed";
-      await assignment.save();
-    }
-
-    const statusUpdate = {
-      orderId: order._id,
-      shopId: shopOrder.shop,
-      shopOrderId: shopOrder._id,
-      status: "delivered",
-      userId: order.user?._id,
-    };
-    const io = req.app.get("io");
-    if (io) {
-      if (order.user?.socketId) {
-        io.to(order.user.socketId).emit("update-status", statusUpdate);
-      }
-      io.emit("order-status-updated", statusUpdate);
-    }
-
-    return res.status(200).json({
-      message: "Order delivered successfully",
-      orderId: order._id,
-      shopOrderId: shopOrder._id,
-      status: "delivered",
-    });
-  } catch (error) {
-    console.error("Mark Order Delivered Error:", error);
-    return res.status(500).json({ message: "Failed to mark the order as delivered" });
   }
 };
 
