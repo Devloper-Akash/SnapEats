@@ -79,39 +79,7 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
       }
       const details = await response.text();
       console.warn(`Resend API returned ${response.status}: ${details}`);
-
-      // Handle Resend free tier sandbox restriction (can only send to account owner's email)
-      if (response.status === 403 && details.includes("testing emails to your own email address")) {
-        const match = details.match(/\(([^)]+@[^)]+)\)/);
-        const ownerEmail = match ? match[1].trim() : (process.env.RESEND_OWNER_EMAIL || "halderak294@gmail.com").trim();
-        if (ownerEmail && ownerEmail.toLowerCase() !== toEmail.toLowerCase()) {
-          console.log(`Resend sandbox restriction: routing test email for ${toEmail} to ${ownerEmail}`);
-          const fallbackRes = await fetch("https://api.resend.com/emails", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${resendApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              from,
-              to: [ownerEmail],
-              subject: `${subject} [For: ${toEmail}]`,
-              html: `<div style="font-family:sans-serif;padding:12px;border:1px solid #ff4d2d;border-radius:8px;">
-                <p><b>Original Recipient:</b> ${toEmail}</p>
-                ${html}
-                <hr style="margin:16px 0;border:none;border-top:1px solid #eee;" />
-                <p style="font-size:12px;color:#777;">
-                  <b>Developer Note:</b> Resend's free tier (<code>onboarding@resend.dev</code>) only permits delivery to your registered account email (<code>${ownerEmail}</code>). To send directly to customer inboxes like <code>${toEmail}</code>, verify a custom domain at <a href="https://resend.com/domains">resend.com/domains</a> or use Brevo.
-                </p>
-              </div>`,
-            }),
-          });
-          if (fallbackRes.ok) {
-            console.log(`Test OTP email delivered to ${ownerEmail}`);
-            return;
-          }
-        }
-      }
+      throw new Error(`Resend email failed (${response.status}): ${details}`);
     } catch (err) {
       console.warn("Resend API failed:", err?.message || err);
     }
