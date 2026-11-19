@@ -20,19 +20,23 @@ function MapUpdater({ deliveryBoyLat, deliveryBoyLon, customerLat, customerLon }
   const map = useMap();
 
   useEffect(() => {
-    const hasDelivery = Boolean(deliveryBoyLat && deliveryBoyLon);
-    const hasCustomer = Boolean(customerLat && customerLon);
+    const hasDelivery = Boolean(
+      deliveryBoyLat != null && deliveryBoyLon != null && !isNaN(deliveryBoyLat) && !isNaN(deliveryBoyLon)
+    );
+    const hasCustomer = Boolean(
+      customerLat != null && customerLon != null && !isNaN(customerLat) && !isNaN(customerLon)
+    );
 
     if (hasDelivery && hasCustomer) {
       const bounds = L.latLngBounds([
-        [deliveryBoyLat, deliveryBoyLon],
-        [customerLat, customerLon],
+        [Number(deliveryBoyLat), Number(deliveryBoyLon)],
+        [Number(customerLat), Number(customerLon)],
       ]);
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16, animate: true });
     } else if (hasDelivery) {
-      map.panTo([deliveryBoyLat, deliveryBoyLon], { animate: true });
+      map.panTo([Number(deliveryBoyLat), Number(deliveryBoyLon)], { animate: true });
     } else if (hasCustomer) {
-      map.panTo([customerLat, customerLon], { animate: true });
+      map.panTo([Number(customerLat), Number(customerLon)], { animate: true });
     }
   }, [deliveryBoyLat, deliveryBoyLon, customerLat, customerLon, map]);
 
@@ -45,20 +49,24 @@ const DeliveryBoyTracking = ({ data }) => {
   const customerLat = data?.customerLocation?.lat;
   const customerLon = data?.customerLocation?.lon;
 
-  const hasDelivery = Boolean(deliveryBoyLat && deliveryBoyLon);
-  const hasCustomer = Boolean(customerLat && customerLon);
+  const hasDelivery = Boolean(
+    deliveryBoyLat != null && deliveryBoyLon != null && !isNaN(deliveryBoyLat) && !isNaN(deliveryBoyLon)
+  );
+  const hasCustomer = Boolean(
+    customerLat != null && customerLon != null && !isNaN(customerLat) && !isNaN(customerLon)
+  );
 
   const center = hasDelivery
-    ? [deliveryBoyLat, deliveryBoyLon]
+    ? [Number(deliveryBoyLat), Number(deliveryBoyLon)]
     : hasCustomer
-      ? [customerLat, customerLon]
+      ? [Number(customerLat), Number(customerLon)]
       : [20.5937, 78.9629];
 
   const path =
     hasDelivery && hasCustomer
       ? [
-          [deliveryBoyLat, deliveryBoyLon],
-          [customerLat, customerLon],
+          [Number(deliveryBoyLat), Number(deliveryBoyLon)],
+          [Number(customerLat), Number(customerLon)],
         ]
       : [];
 
