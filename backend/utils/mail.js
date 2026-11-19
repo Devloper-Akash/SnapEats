@@ -26,36 +26,7 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
     throw new Error("Recipient email address is missing");
   }
 
-  // 1. Try Brevo HTTPS API (works on Render free tier, port 443, 300 free emails/day)
-  const brevoApiKey = process.env.BREVO_API_KEY?.trim() || process.env.SENDINBLUE_API_KEY?.trim();
-  if (brevoApiKey) {
-    try {
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          "api-key": brevoApiKey,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          sender: { name: "SnapEats", email: emailUser },
-          to: [{ email: toEmail }],
-          subject,
-          htmlContent: html,
-        }),
-      });
-
-      if (response.ok) {
-        return;
-      }
-      const details = await response.text();
-      console.warn(`Brevo API returned ${response.status}: ${details}`);
-    } catch (err) {
-      console.warn("Brevo API failed:", err?.message || err);
-    }
-  }
-
-  // 2. Try Resend HTTPS API (works on Render free tier, port 443)
+  // 1. Try Resend HTTPS API (Port 443 - works on Render)
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
   if (resendApiKey) {
     const from = (process.env.EMAIL_FROM || "SnapEats <onboarding@resend.dev>").trim();
@@ -82,6 +53,36 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
       throw new Error(`Resend email failed (${response.status}): ${details}`);
     } catch (err) {
       console.warn("Resend API failed:", err?.message || err);
+      // If Resend failed and Brevo is configured, try Brevo as backup
+    }
+  }
+
+  // 2. Try Brevo HTTPS API as secondary backup (Port 443)
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim() || process.env.SENDINBLUE_API_KEY?.trim();
+  if (brevoApiKey) {
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoApiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "SnapEats", email: emailUser },
+          to: [{ email: toEmail }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+
+      if (response.ok) {
+        return;
+      }
+      const details = await response.text();
+      console.warn(`Brevo API returned ${response.status}: ${details}`);
+    } catch (err) {
+      console.warn("Brevo API failed:", err?.message || err);
     }
   }
 
