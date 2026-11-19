@@ -31,43 +31,20 @@ const isAllowedOrigin = (origin) => {
   return false;
 };
 
-const io = new Server(server, {
-  cors: {
-<<<<<<< HEAD
-    origin: (origin, callback) => {
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
-    },
-=======
-    origin: "https://snapeats-fjjn.onrender.com",
->>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+const corsOptions = {
+  origin: (origin, callback) => {
+    callback(null, isAllowedOrigin(origin) ? origin : false);
   },
-});
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+};
+
+const io = new Server(server, { cors: corsOptions });
 
 app.set("io", io);
 
 const port = process.env.PORT || 5000;
-app.use(
-  cors({
-<<<<<<< HEAD
-    origin: (origin, callback) => {
-      if (isAllowedOrigin(origin)) {
-        callback(null, true);
-      } else {
-        callback(null, true);
-      }
-    },
-=======
-    origin: "https://snapeats-fjjn.onrender.com",
->>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
-    credentials: true,
-  }),
-);
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
 app.use("/api/auth", authRouter);

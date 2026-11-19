@@ -3,48 +3,43 @@ import bcrypt from "bcryptjs";
 import genToken from "../utils/token.js";
 import { sendOtpMail } from "../utils/mail.js";
 
-export const signUp=async(req,res)=>{
+const cookieOptions = () => {
+    const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
+    return {
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        httpOnly: true
+    };
+};
+
+export const signUp = async (req, res) => {
     try {
-        const {fullName,email,password,mobile,role} = req.body;
+        const { fullName, email, password, mobile, role } = req.body;
         const normalizedEmail = email?.trim().toLowerCase();
-        let user = await User.findOne({email: normalizedEmail});
-        if(user){
-            return res.status(400).json({message:"User Already exists."});
+        let user = await User.findOne({ email: normalizedEmail });
+        if (user) {
+            return res.status(400).json({ message: "User Already exists." });
         }
-        if(password.length<6){
-            return res.status(400).json({message:"Password must be at least 6 characters."})
+        if (password.length < 6) {
+            return res.status(400).json({ message: "Password must be at least 6 characters." })
         }
-        if(mobile.length<10){
-            return res.status(400).json({message:"Mobile number must be at least 10 digits."})
+        if (mobile.length < 10) {
+            return res.status(400).json({ message: "Mobile number must be at least 10 digits." })
         }
 
-        const hasedPassword = await bcrypt.hash(password,10);
+        const hasedPassword = await bcrypt.hash(password, 10);
 
         user = await User.create({
             fullName,
             email: normalizedEmail,
             role,
             mobile,
-            password:hasedPassword
+            password: hasedPassword
         });
 
         const token = await genToken(user._id);
-<<<<<<< HEAD
-        const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
-        res.cookie("token", token, {
-            secure: isProduction,
-            sameSite: isProduction ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            httpOnly: true
-        });
-=======
-        res.cookie("token",token,{
-            secure:true,
-            sameSite:"none",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
-        })
->>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
+        res.cookie("token", token, cookieOptions());
 
         return res.status(201).json(user);
     } catch (error) {
@@ -53,37 +48,22 @@ export const signUp=async(req,res)=>{
 }
 
 
-export const signIn=async(req,res)=>{
+export const signIn = async (req, res) => {
     try {
-        const {email,password} = req.body;
+        const { email, password } = req.body;
         const normalizedEmail = email?.trim().toLowerCase();
-        const user = await User.findOne({email: normalizedEmail});
-        if(!user){
-            return res.status(400).json({message:"User does not exists."});
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(400).json({ message: "User does not exists." });
         }
 
-        const isMatch = await bcrypt.compare(password,user.password);
-        if(!isMatch){
-            return res.status(400).json({message:"Incorrect Password"});
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Incorrect Password" });
         }
 
         const token = await genToken(user._id);
-<<<<<<< HEAD
-        const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
-        res.cookie("token", token, {
-            secure: isProduction,
-            sameSite: isProduction ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            httpOnly: true
-        });
-=======
-        res.cookie("token",token,{
-            secure:true,
-            sameSite:"none",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
-        })
->>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
+        res.cookie("token", token, cookieOptions());
 
         return res.status(200).json(user);
     } catch (error) {
@@ -91,85 +71,85 @@ export const signIn=async(req,res)=>{
     }
 }
 
-export const signOut = async(req,res)=>{
+export const signOut = async (req, res) => {
     try {
         res.clearCookie("token");
-        return res.status(200).json({message:"Logout Successfully"})
+        return res.status(200).json({ message: "Logout Successfully" })
     } catch (error) {
-        return res.status(500).json({message:`Sign out error ${error}`});
+        return res.status(500).json({ message: `Sign out error ${error}` });
     }
 }
 
- export const sendOtp = async(req,res)=>{
+export const sendOtp = async (req, res) => {
     try {
-        const {email} = req.body;
+        const { email } = req.body;
         const normalizedEmail = email?.trim().toLowerCase();
-        const user = await User.findOne({email: normalizedEmail});
-        if(!user){
-            return res.status(400).json({message:"User does not exists."});
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(400).json({ message: "User does not exists." });
         }
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         user.resetOtp = otp;
-        user.otpExpires = Date.now() + 5*60*1000; // OTP valid for 5 minutes
+        user.otpExpires = Date.now() + 5 * 60 * 1000; // OTP valid for 5 minutes
         user.isOtpVerified = false;
         await user.save();
         await sendOtpMail(user.email, otp);
-        return res.status(200).json({message:"OTP sent successfully."});
+        return res.status(200).json({ message: "OTP sent successfully." });
     } catch (error) {
-        return res.status(500).json({message:`Send OTP error ${error}`});
+        return res.status(500).json({ message: `Send OTP error ${error}` });
     }
 
 }
 
- export const verifyOtp = async(req,res)=>{
-        try {
-            const {email,otp} = req.body;
-            const normalizedEmail = email?.trim().toLowerCase();
-            const user = await User.findOne({email: normalizedEmail});
-            if(!user){
-                return res.status(400).json({message:"User does not exists."});
-            }
-            if(user.resetOtp !== otp){
-                return res.status(400).json({message:"Invalid OTP."});
-            }
-            if(Date.now() > user.otpExpires){
-                return res.status(400).json({message:"OTP has expired."});
-            }
-            user.isOtpVerified = true;
-            user.resetOtp = undefined;
-            user.otpExpires = undefined;
-            await user.save();
-            return res.status(200).json({message:"OTP verified successfully."});
-        } catch (error) {
-            return res.status(500).json({message:`Verify OTP error ${error}`});
-        }
-    }
-
-export const resetPassword = async(req,res)=>{
+export const verifyOtp = async (req, res) => {
     try {
-        const {email,newPassword} = req.body;
+        const { email, otp } = req.body;
         const normalizedEmail = email?.trim().toLowerCase();
-        if(!newPassword || !newPassword.trim()){
-            return res.status(400).json({message:"New password is required."});
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(400).json({ message: "User does not exists." });
         }
-        const user = await User.findOne({email: normalizedEmail});
-        if(!user){
-            return res.status(400).json({message:"User does not exists."});
+        if (user.resetOtp !== otp) {
+            return res.status(400).json({ message: "Invalid OTP." });
         }
-        if(!user.isOtpVerified){
-            return res.status(400).json({message:"OTP not verified."});
+        if (Date.now() > user.otpExpires) {
+            return res.status(400).json({ message: "OTP has expired." });
         }
-        const hasedPassword = await bcrypt.hash(newPassword,10);
+        user.isOtpVerified = true;
+        user.resetOtp = undefined;
+        user.otpExpires = undefined;
+        await user.save();
+        return res.status(200).json({ message: "OTP verified successfully." });
+    } catch (error) {
+        return res.status(500).json({ message: `Verify OTP error ${error}` });
+    }
+}
+
+export const resetPassword = async (req, res) => {
+    try {
+        const { email, newPassword } = req.body;
+        const normalizedEmail = email?.trim().toLowerCase();
+        if (!newPassword || !newPassword.trim()) {
+            return res.status(400).json({ message: "New password is required." });
+        }
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(400).json({ message: "User does not exists." });
+        }
+        if (!user.isOtpVerified) {
+            return res.status(400).json({ message: "OTP not verified." });
+        }
+        const hasedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hasedPassword;
         user.isOtpVerified = false;
         await user.save();
-        return res.status(200).json({message:"Password reset successfully."});
+        return res.status(200).json({ message: "Password reset successfully." });
     } catch (error) {
-        return res.status(500).json({message:`Reset Password error ${error}`});
+        return res.status(500).json({ message: `Reset Password error ${error}` });
     }
 }
 
-export const googleAuth = async(req,res)=>{
+export const googleAuth = async (req, res) => {
     try {
         const { fullName, email, mobile, role } = req.body;
 
@@ -177,8 +157,8 @@ export const googleAuth = async(req,res)=>{
             return res.status(400).json({ message: "Email is required." });
         }
 
-        let user = await User.findOne({email});
-        if(!user){
+        let user = await User.findOne({ email });
+        if (!user) {
             if (!fullName || !mobile || !role) {
                 return res.status(400).json({ message: "fullName, mobile and role are required for new Google users." });
             }
@@ -192,26 +172,11 @@ export const googleAuth = async(req,res)=>{
         }
 
         const token = await genToken(user._id);
-<<<<<<< HEAD
-        const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
-        res.cookie("token", token, {
-            secure: isProduction,
-            sameSite: isProduction ? "none" : "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            httpOnly: true
-        });
-=======
-        res.cookie("token",token,{
-            secure:true,
-            sameSite:"none",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
-        })
->>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
+        res.cookie("token", token, cookieOptions());
 
         return res.status(200).json(user);
 
     } catch (error) {
-        return res.status(500).json({message:`Google Auth error ${error}`});
+        return res.status(500).json({ message: `Google Auth error ${error}` });
     }
 }
