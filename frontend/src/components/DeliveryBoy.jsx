@@ -109,7 +109,11 @@ const DeliveryBoy = () => {
       );
       setShowOtpBox(true);
       setOtp("");
-      setDeliveryMessage(result.data?.message || "OTP sent to the customer's registered email.");
+      if (result.data?.emailSent) {
+        setDeliveryMessage(result.data?.message || "OTP sent to the customer's registered email.");
+      } else {
+        setDeliveryError(result.data?.message || "The OTP email could not be sent.");
+      }
     } catch (error) {
       console.error(error);
       setDeliveryError(error?.response?.data?.message || "Failed to send the delivery OTP. Please try again.");

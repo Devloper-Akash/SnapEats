@@ -28,6 +28,7 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
 
   // 1. Try Resend HTTPS API (Port 443 - works on Render)
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  let resendFailure = null;
   if (resendApiKey) {
     const from = (process.env.EMAIL_FROM || "SnapEats <onboarding@resend.dev>").trim();
     try {
@@ -50,10 +51,13 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
       }
       const details = await response.text();
       console.warn(`Resend API returned ${response.status}: ${details}`);
-      throw new Error(`Resend email failed (${response.status}): ${details}`);
+      resendFailure = new Error(`Resend email failed (${response.status}): ${details}`);
+      if (response.status === 403) {
+        resendFailure.code = "RESEND_SENDER_UNVERIFIED";
+      }
     } catch (err) {
       console.warn("Resend API failed:", err?.message || err);
-      // If Resend failed and Brevo is configured, try Brevo as backup
+      resendFailure = err;
     }
   }
 
@@ -86,7 +90,15 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
     }
   }
 
-  // 3. Fallback to Gmail SMTP (for localhost or non-blocked environments)
+  // Render Free blocks outbound SMTP. Never fall back to Gmail there after an
+  // API send fails; that only replaces the useful provider error with a
+  // guaranteed SMTP connection failure.
+  if (process.env.RENDER) {
+    if (resendFailure) throw resendFailure;
+    throw new Error("No HTTPS email provider succeeded. Configure RESEND_API_KEY and EMAIL_FROM.");
+  }
+
+  // 3. Fallback to Gmail SMTP for local development or other environments.
   await transporter.sendMail({
     from: emailUser,
     to: toEmail,
