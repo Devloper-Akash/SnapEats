@@ -682,17 +682,40 @@ export const sendDeliveryOtp = async (req, res) => {
     shopOrder.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await order.save();
 
+    let emailSent = false;
     try {
       await sendDeliveryOtpMail(order.user, otp);
+      emailSent = true;
     } catch (error) {
-      console.error("sendDeliveryOtpMail failed:", error?.message || error);
-      throw error;
+      console.warn("sendDeliveryOtpMail failed or timed out:", error?.message || error);
+    }
+
+    const io = req.app.get("io");
+    if (io) {
+      const customerUserId = (order.user?._id || order.user)?.toString();
+      const customerSocketId = order.user?.socketId;
+      const otpPayload = {
+        orderId: order._id,
+        shopOrderId: shopOrder._id,
+        deliveryOtp: otp,
+        message: "Your delivery OTP has arrived.",
+      };
+      if (customerSocketId) {
+        io.to(customerSocketId).emit("delivery-otp-received", otpPayload);
+      }
+      if (customerUserId) {
+        io.to(customerUserId).emit("delivery-otp-received", otpPayload);
+      }
     }
 
     return res
       .status(200)
       .json({
-        message: `Delivery OTP Sent Successfully to ${order?.user?.fullName || "customer"}`,
+        success: true,
+        message: emailSent
+          ? `Delivery OTP Sent Successfully to ${order?.user?.fullName || "customer"}`
+          : `Delivery OTP generated. Ask customer for the 4-digit OTP.`,
+        emailSent,
       });
   } catch (error) {
     console.error("Send Delivery OTP Error:", error);

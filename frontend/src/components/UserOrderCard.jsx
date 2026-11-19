@@ -87,6 +87,15 @@ function UserOrderCard({data}) {
               </span>
             </div>
 
+            {shopOrder.status?.toLowerCase() === "out for delivery" && shopOrder.deliveryOtp && (
+              <div className="mx-3 sm:mx-4 mt-2 p-2 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-between text-xs">
+                <span className="font-semibold text-orange-700">Delivery OTP (share with delivery partner):</span>
+                <span className="font-bold text-[#ff4d2d] tracking-widest text-sm bg-white px-2 py-0.5 rounded border border-orange-200">
+                  {shopOrder.deliveryOtp}
+                </span>
+              </div>
+            )}
+
             {/* Items - horizontal scroll on mobile */}
             <div className="p-3 sm:p-4">
               <div className="flex gap-3 overflow-x-auto pb-1">

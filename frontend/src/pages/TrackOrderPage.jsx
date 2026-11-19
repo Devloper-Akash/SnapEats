@@ -90,14 +90,40 @@ const TrackOrderPage = () => {
       }
     };
 
+    const handleDeliveryOtpReceived = ({
+      orderId: updatedOrderId,
+      shopOrderId: updatedShopOrderId,
+      deliveryOtp,
+    }) => {
+      if (String(updatedOrderId) === String(orderId)) {
+        setCurrentOrder((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            shopOrders: prev.shopOrders?.map((so) => {
+              if (
+                !updatedShopOrderId ||
+                String(so._id) === String(updatedShopOrderId)
+              ) {
+                return { ...so, deliveryOtp };
+              }
+              return so;
+            }),
+          };
+        });
+      }
+    };
+
     socket?.on("update-status", handleStatusUpdate);
     socket?.on("order-status-updated", handleStatusUpdate);
     socket?.on("order-accepted", handleOrderAccepted);
+    socket?.on("delivery-otp-received", handleDeliveryOtpReceived);
 
     return () => {
       socket?.off("update-status", handleStatusUpdate);
       socket?.off("order-status-updated", handleStatusUpdate);
       socket?.off("order-accepted", handleOrderAccepted);
+      socket?.off("delivery-otp-received", handleDeliveryOtpReceived);
     };
   }, [socket, orderId, dispatch]);
 
@@ -185,6 +211,17 @@ const TrackOrderPage = () => {
                 <p className="text-green-600 font-bold">Delivered</p>
               ) : (
                 <>
+                  {shopOrder.deliveryOtp && (
+                    <div className="bg-orange-50 border border-orange-200 p-3 rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-bold text-[#ff4d2d] uppercase">Delivery OTP</p>
+                        <p className="text-xs text-gray-500">Share this OTP with your delivery boy to receive your order</p>
+                      </div>
+                      <span className="text-2xl font-black tracking-widest text-[#ff4d2d] bg-white px-3 py-1 rounded-lg border border-orange-200 shadow-sm">
+                        {shopOrder.deliveryOtp}
+                      </span>
+                    </div>
+                  )}
                   <h2>Delivery Boy</h2>
                   {shopOrder?.assignedDeliveryBoy ? (
                     <div className="bg-[#ff4d2d]/10 p-2 rounded-xl space-y-1">

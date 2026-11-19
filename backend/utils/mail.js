@@ -15,22 +15,90 @@ const transporter = nodemailer.createTransport({
     user: emailUser,
     pass: emailPass,
   },
-  connectionTimeout: 10000,
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  connectionTimeout: 2500,
+  greetingTimeout: 2500,
+  socketTimeout: 2500,
 });
+
+const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
+  const toEmail = (to?.email || (typeof to === "string" ? to : "")).trim();
+  if (!toEmail) {
+    throw new Error("Recipient email address is missing");
+  }
+
+  // 1. Try Brevo HTTPS API (works on Render free tier, port 443, 300 free emails/day)
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim() || process.env.SENDINBLUE_API_KEY?.trim();
+  if (brevoApiKey) {
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoApiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "SnapEats", email: emailUser },
+          to: [{ email: toEmail }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+
+      if (response.ok) {
+        return;
+      }
+      const details = await response.text();
+      console.warn(`Brevo API returned ${response.status}: ${details}`);
+    } catch (err) {
+      console.warn("Brevo API failed:", err?.message || err);
+    }
+  }
+
+  // 2. Try Resend HTTPS API (works on Render free tier, port 443)
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (resendApiKey) {
+    const from = (process.env.EMAIL_FROM || "SnapEats <onboarding@resend.dev>").trim();
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from,
+          to: [toEmail],
+          subject,
+          html,
+        }),
+      });
+
+      if (response.ok) {
+        return;
+      }
+      const details = await response.text();
+      console.warn(`Resend API returned ${response.status}: ${details}`);
+    } catch (err) {
+      console.warn("Resend API failed:", err?.message || err);
+    }
+  }
+
+  // 3. Fallback to Gmail SMTP (for localhost or non-blocked environments)
+  await transporter.sendMail({
+    from: emailUser,
+    to: toEmail,
+    subject,
+    html,
+  });
+};
 
 export const sendOtpMail = async (to, otp) => {
   try {
-    if (!to) {
-      console.warn("Skipping email: missing recipient");
-      return;
-    }
-    await transporter.sendMail({
-      from: emailUser,
+    await sendMailViaHttpOrSmtp({
       to,
-      subject: "Reset Your Password",
-      html: `<p> Your OTP for resetting your password is <b>${otp}</b>. It is valid for 5 minutes.</p>`
+      subject: "SnapEats - Reset Your Password",
+      html: `<p>Your OTP for resetting your password is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
     });
   } catch (error) {
     console.error("sendOtpMail error:", error?.message || error);
@@ -43,40 +111,12 @@ export const sendDeliveryOtpMail = async (user, otp) => {
     throw new Error("Customer email address is missing");
   }
 
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  if (resendApiKey) {
-    const from = (process.env.EMAIL_FROM || "onboarding@resend.dev").trim();
-    try {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from,
-          to: [toEmail],
-          subject: "Delivery OTP",
-          html: `<p>Your OTP for delivery is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
-        }),
-      });
-
-      if (response.ok) {
-        return;
-      }
-      const details = await response.text();
-      console.warn(`Resend API returned ${response.status}: ${details}. Falling back to Gmail.`);
-    } catch (err) {
-      console.warn("Resend API failed, falling back to Gmail:", err.message);
-    }
-  }
-
-  await transporter.sendMail({
-    from: emailUser,
+  await sendMailViaHttpOrSmtp({
     to: toEmail,
-    subject: "Delivery OTP",
+    subject: "SnapEats - Delivery OTP",
     html: `<p>Your OTP for delivery is <b>${otp}</b>. It is valid for 5 minutes.</p>`,
   });
 };
+
 
 
