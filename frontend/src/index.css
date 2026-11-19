@@ -138,3 +138,16 @@
 ::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes snap-eats-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-11px); }
+}
+
+.food-float {
+  animation: snap-eats-float 5.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .food-float { animation: none; }
+}

@@ -6,6 +6,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import useGetCurrentUser from './hooks/useGetCurrentUser';
 import { useSelector } from 'react-redux';
 import Home from './pages/Home';
+import Welcome from './pages/Welcome';
 import useGetCity from './hooks/useGetCity';
 import useGetMyShop from './hooks/useGetMyShop';
 import CreateEditShop from './pages/CreateEditShop';
@@ -38,7 +39,6 @@ const App = () => {
   useGetMyOrders();
   const { userData } = useSelector(state => state.user);
   const dispatch = useDispatch();
-  const authFallbackRoute = userData ? "/" : "/signin";
 
   useEffect(() => {
     const socketInstance = io(serverUrl || window.location.origin, {
@@ -62,7 +62,7 @@ const App = () => {
       <Route path='/signin' element={!userData ? <SignIn /> : <Navigate to={"/"} />}></Route>
       <Route path='/login' element={<Navigate to="/signin" />}></Route>
       <Route path='/forgot-password' element={!userData ? <ForgotPassword /> : <Navigate to={"/"} />}></Route>
-      <Route path='/' element={userData ? <Home /> : <Navigate to={"/signin"} />}></Route>
+      <Route path='/' element={userData ? <Home /> : <Welcome />}></Route>
       <Route path='/create-edit-shop' element={userData ? <CreateEditShop /> : <Navigate to={"/signin"} />}></Route>
       <Route path='/add-item' element={userData ? <AddItem /> : <Navigate to={"/signin"} />}></Route>
       <Route path='/edit-item/:itemId' element={userData ? <EditItem /> : <Navigate to={"/signin"} />}></Route>
@@ -72,7 +72,7 @@ const App = () => {
       <Route path='/my-orders' element={userData ? <MyOrders /> : <Navigate to={"/signin"} />}></Route>
       <Route path='/track-order/:orderId' element={userData ? <TrackOrderPage /> : <Navigate to={"/signin"} />}></Route>
       <Route path='/shop/:shopId' element={userData ? <Shop /> : <Navigate to={"/signin"} />}></Route>
-      <Route path='*' element={<Navigate to={authFallbackRoute} replace />}></Route>
+      <Route path='*' element={<Navigate to="/" replace />}></Route>
     </Routes>
   )
 }

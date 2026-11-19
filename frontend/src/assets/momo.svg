@@ -1,0 +1,39 @@
+<svg width="320" height="320" viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="plate" x1="65" y1="57" x2="252" y2="253" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF9"/>
+      <stop offset="1" stop-color="#F5E9DB"/>
+    </linearGradient>
+    <linearGradient id="dough" x1="86" y1="83" x2="132" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFDF7"/>
+      <stop offset="1" stop-color="#EBDAC4"/>
+    </linearGradient>
+    <linearGradient id="chutney" x1="194" y1="175" x2="246" y2="228" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF7757"/>
+      <stop offset="1" stop-color="#D7331B"/>
+    </linearGradient>
+    <filter id="shadow" x="36" y="56" width="254" height="229" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+  <ellipse cx="163" cy="246" rx="116" ry="20" fill="#71432B" fill-opacity=".13" filter="url(#shadow)"/>
+  <ellipse cx="160" cy="177" rx="126" ry="112" fill="url(#plate)"/>
+  <ellipse cx="160" cy="177" rx="110" ry="96" fill="#FFFCF7" stroke="#E8D9C7" stroke-width="4"/>
+  <ellipse cx="116" cy="181" rx="39" ry="28" fill="#E9D7BE" fill-opacity=".5"/>
+  <ellipse cx="116" cy="174" rx="38" ry="29" fill="url(#dough)" stroke="#D7C2A5" stroke-width="3"/>
+  <path d="M81 174C88 165 95 158 101 148C106 161 111 164 116 147C121 163 126 162 132 151C135 165 143 169 151 173C146 189 132 200 115 201C99 201 85 191 81 174Z" fill="url(#dough)" stroke="#D7C2A5" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M100 160C106 168 109 176 110 186M116 156C119 166 120 176 119 188M132 160C131 169 128 178 125 188" stroke="#D1BA9A" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="174" cy="132" rx="38" ry="28" fill="#E9D7BE" fill-opacity=".5"/>
+  <ellipse cx="174" cy="125" rx="38" ry="29" fill="url(#dough)" stroke="#D7C2A5" stroke-width="3"/>
+  <path d="M139 125C146 116 153 109 159 99C164 112 169 115 174 98C179 114 184 113 190 102C193 116 201 120 209 124C204 140 190 151 173 152C157 152 143 142 139 125Z" fill="url(#dough)" stroke="#D7C2A5" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M158 111C164 119 167 127 168 137M174 107C177 117 178 127 177 139M190 111C189 120 186 129 183 139" stroke="#D1BA9A" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="208" cy="183" rx="40" ry="29" fill="#E9D7BE" fill-opacity=".45"/>
+  <ellipse cx="208" cy="176" rx="39" ry="30" fill="url(#dough)" stroke="#D7C2A5" stroke-width="3"/>
+  <path d="M172 176C180 166 187 159 193 148C198 162 203 165 208 147C213 164 219 163 225 151C228 166 236 171 245 175C240 191 225 202 208 203C192 203 177 193 172 176Z" fill="url(#dough)" stroke="#D7C2A5" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M192 160C198 169 201 177 202 188M208 156C211 167 212 177 211 189M225 160C223 170 220 179 217 189" stroke="#D1BA9A" stroke-width="3" stroke-linecap="round"/>
+  <path d="M124 223C129 206 145 197 164 197H190C209 197 226 207 231 223C218 239 197 248 177 248H163C145 248 132 239 124 223Z" fill="#FFF6ED" stroke="#E5C7AE" stroke-width="4"/>
+  <ellipse cx="177" cy="220" rx="39" ry="18" fill="url(#chutney)"/>
+  <path d="M151 220C162 214 184 214 198 220" stroke="#FFB293" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="164" cy="217" r="2.5" fill="#A72A18"/>
+  <circle cx="187" cy="224" r="2.5" fill="#A72A18"/>
+</svg>
