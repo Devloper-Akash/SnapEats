@@ -668,11 +668,13 @@ export const sendDeliveryOtp = async (req, res) => {
       status: "assigned",
     });
     if (
-      String(shopOrder.assignedDeliveryBoy) !== String(req.userId) ||
-      !assignment ||
-      shopOrder.status !== "out for delivery"
+      String(shopOrder.assignedDeliveryBoy) !== String(req.userId) &&
+      (!assignment || String(assignment.assignTo) !== String(req.userId))
     ) {
       return res.status(403).json({ message: "This order is not actively assigned to you" });
+    }
+    if (shopOrder.status?.toLowerCase() !== "out for delivery") {
+      return res.status(400).json({ message: "Order must be out for delivery to send delivery OTP" });
     }
 
     const otp = Math.floor(1000 + Math.random() * 9000).toString();
@@ -683,9 +685,7 @@ export const sendDeliveryOtp = async (req, res) => {
     try {
       await sendDeliveryOtpMail(order.user, otp);
     } catch (error) {
-      shopOrder.deliveryOtp = null;
-      shopOrder.otpExpires = null;
-      await order.save();
+      console.error("sendDeliveryOtpMail failed:", error?.message || error);
       throw error;
     }
 
