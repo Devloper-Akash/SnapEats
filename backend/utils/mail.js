@@ -30,7 +30,12 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
   let resendFailure = null;
   if (resendApiKey) {
-    const from = (process.env.EMAIL_FROM || "SnapEats <onboarding@resend.dev>").trim();
+    let from = (process.env.EMAIL_FROM || "onboarding@resend.dev").trim();
+    // Resend only accepts verified domains or the default 'onboarding@resend.dev'.
+    // If EMAIL_FROM was set to a @gmail.com or other public provider, default to onboarding@resend.dev.
+    if (!from || from.includes("@gmail.com") || from.includes("@yahoo.com") || from.includes("@outlook.com") || from.includes("@hotmail.com")) {
+      from = "onboarding@resend.dev";
+    }
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",

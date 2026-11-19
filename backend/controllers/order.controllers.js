@@ -683,16 +683,11 @@ export const sendDeliveryOtp = async (req, res) => {
     await order.save();
 
     let emailSent = false;
-    let emailFailureMessage = "";
     try {
       await sendDeliveryOtpMail(order.user, otp);
       emailSent = true;
     } catch (error) {
       console.warn("sendDeliveryOtpMail failed or timed out:", error?.message || error);
-      emailFailureMessage =
-        error?.code === "RESEND_SENDER_UNVERIFIED"
-          ? "Resend rejected this sender. Verify a sending domain in Resend and set EMAIL_FROM to an address on it."
-          : "The OTP email could not be sent. Check the backend email provider settings.";
     }
 
     const io = req.app.get("io");
@@ -718,8 +713,8 @@ export const sendDeliveryOtp = async (req, res) => {
       .json({
         success: true,
         message: emailSent
-          ? `Delivery OTP Sent Successfully to ${order?.user?.fullName || "customer"}`
-          : `${emailFailureMessage} The customer can still view the OTP on the Track Order page.`,
+          ? `Delivery OTP sent successfully to ${order?.user?.fullName || "customer"}'s email.`
+          : `OTP generated successfully. Ask the customer for the OTP shown on their screen.`,
         emailSent,
       });
   } catch (error) {
