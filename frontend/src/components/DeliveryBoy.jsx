@@ -17,7 +17,6 @@ const DeliveryBoy = () => {
   const [otp, setOtp] = useState("");
   const [todayDeliveries, setTodayDeliveries] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [message,setMessage] = useState("");
   const [myLocation, setMyLocation] = useState(null);
 
   useEffect(() => {
@@ -92,26 +91,34 @@ const DeliveryBoy = () => {
   };
 
   const sendOtp = async () => {
+    if (!currentOrder?._id || !currentOrder?.shopOrder?._id) {
+      alert("No active order found to deliver.");
+      return;
+    }
     setLoading(true);
     try {
       const result = await axios.post(
         `${serverUrl}/api/order/send-delivery-otp`,
-        { orderId: currentOrder?._id, shopOrderId: currentOrder?.shopOrder?._id },
-        { withCredentials: true },
-        setLoading(false)
+        { orderId: currentOrder._id, shopOrderId: currentOrder.shopOrder._id },
+        { withCredentials: true }
       );
       setShowOtpBox(true);
-      console.log(result.data);
       getAssignments();
       await getCurrentOrder();
     } catch (error) {
-      console.log(error?.response?.data?.message || error);
+      console.error(error);
+      const errMsg = error?.response?.data?.message || "Failed to send delivery OTP. Please try again.";
+      alert(errMsg);
+    } finally {
       setLoading(false);
     }
   };
 
   const verifyOtp = async () => {
-    setMessage("");
+    if (!otp.trim()) {
+      alert("Please enter the OTP");
+      return;
+    }
     setLoading(true);
     try {
       const result = await axios.post(
@@ -119,20 +126,21 @@ const DeliveryBoy = () => {
         {
           orderId: currentOrder?._id,
           shopOrderId: currentOrder?.shopOrder?._id,
-          otp,
+          otp: otp.trim(),
         },
-        { withCredentials: true },
+        { withCredentials: true }
       );
       console.log(result.data);
-      setMessage(result.data?.message || "Order marked as delivered successfully.");
-      location.reload();
       setShowOtpBox(false);
       setOtp("");
       await handleTodayDeliveries();
       getAssignments();
       await getCurrentOrder();
     } catch (error) {
-      console.log(error?.response?.data?.message || error);
+      console.error(error);
+      alert(error?.response?.data?.message || "Invalid or Expired OTP");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -278,15 +286,16 @@ const DeliveryBoy = () => {
             />
             {!showOtpBox ? (
               <button
-                className="mt-4 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300"
-                onClick={sendOtp} disabled={loading}
+                className="mt-4 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+                onClick={sendOtp}
+                disabled={loading}
               >
-                {loading?<ClipLoader color="#fff" size={20} /> : "Mark as Delivered"}
+                {loading ? <ClipLoader color="#fff" size={20} /> : "Mark as Delivered"}
               </button>
             ) : (
               <div className="mt-4 p-4 border rounded-xl bg-gray-50">
                 <p className="text-sm font-semibold mb-2">
-                  Enter OTP Send To{" "}
+                  Enter OTP Sent To{" "}
                   <span className="text-orange-500">
                     {currentOrder?.user?.fullName}
                   </span>{" "}
@@ -298,12 +307,12 @@ const DeliveryBoy = () => {
                   onChange={(e) => setOtp(e.target.value)}
                   value={otp}
                 />
-                {message && <p className="text-green-600 text-sm mt-2">{message}</p>}
                 <button
-                  className="mt-2 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300"
+                  className="mt-2 w-full bg-green-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-600 active:scale-95 transition-all duration-300 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
                   onClick={verifyOtp}
+                  disabled={loading}
                 >
-                  Submit OTP
+                  {loading ? <ClipLoader color="#fff" size={20} /> : "Submit OTP"}
                 </button>
               </div>
             )}

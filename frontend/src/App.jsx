@@ -25,7 +25,9 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { setSocket } from './redux/userSlice';
 import { useDispatch } from 'react-redux';
-export const serverUrl = "http://localhost:8000";
+export const serverUrl =
+  import.meta.env.VITE_SERVER_URL ||
+  (import.meta.env.MODE === "production" ? "" : "http://localhost:8000");
 
 const App = () => {
   useGetCurrentUser();
@@ -40,7 +42,7 @@ const App = () => {
   const authFallbackRoute = userData ? "/" : "/signin";
 
   useEffect(() => {
-    const socketInstance = io(serverUrl, {
+    const socketInstance = io(serverUrl || window.location.origin, {
       withCredentials: true,
     })
     dispatch(setSocket(socketInstance));

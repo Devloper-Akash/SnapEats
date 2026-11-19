@@ -29,12 +29,13 @@ export const signUp=async(req,res)=>{
         });
 
         const token = await genToken(user._id);
-        res.cookie("token",token,{
-            secure:false,
-            sameSite:"strict",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
-        })
+        const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
+        res.cookie("token", token, {
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true
+        });
 
         return res.status(201).json(user);
     } catch (error) {
@@ -58,12 +59,13 @@ export const signIn=async(req,res)=>{
         }
 
         const token = await genToken(user._id);
-        res.cookie("token",token,{
-            secure:false,
-            sameSite:"strict",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
-        })
+        const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
+        res.cookie("token", token, {
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true
+        });
 
         return res.status(200).json(user);
     } catch (error) {
@@ -172,12 +174,13 @@ export const googleAuth = async(req,res)=>{
         }
 
         const token = await genToken(user._id);
-        res.cookie("token",token,{
-            secure:false,
-            sameSite:"strict",
-            maxAge:7*24*60*60*1000,
-            httpOnly:true
-        })
+        const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
+        res.cookie("token", token, {
+            secure: isProduction,
+            sameSite: isProduction ? "none" : "lax",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true
+        });
 
         return res.status(200).json(user);
 

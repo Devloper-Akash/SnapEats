@@ -642,11 +642,16 @@ export const getOrderById = async (req, res) => {
 export const sendDeliveryOtp = async (req, res) => {
   try {
     const { orderId, shopOrderId } = req.body;
+    if (!orderId || !shopOrderId) {
+      return res.status(400).json({ message: "orderId and shopOrderId are required" });
+    }
     const order = await Order.findById(orderId).populate("user");
     if (!order) {
       return res.status(404).json({ message: "Order Not Found" });
     }
-    const shopOrder = order.shopOrders.id(shopOrderId);
+    const shopOrder = order.shopOrders.id
+      ? order.shopOrders.id(shopOrderId)
+      : order.shopOrders?.find((so) => String(so._id) === String(shopOrderId));
     if (!shopOrder) {
       return res
         .status(400)
@@ -656,16 +661,19 @@ export const sendDeliveryOtp = async (req, res) => {
     shopOrder.deliveryOtp = otp;
     shopOrder.otpExpires = new Date(Date.now() + 5 * 60 * 1000);
     await order.save();
+
     await sendDeliveryOtpMail(order.user, otp);
+
     return res
       .status(200)
       .json({
-        message: `Delivery OTP Sent Successfully to ${order?.user?.fullName}`,
+        message: `Delivery OTP Sent Successfully to ${order?.user?.fullName || "customer"}`,
       });
   } catch (error) {
+    console.error("Send Delivery OTP Error:", error);
     return res
       .status(500)
-      .json({ message: `Send Delivery OTP Error ${error}` });
+      .json({ message: `Send Delivery OTP Error ${error.message || error}` });
   }
 };
 
@@ -676,16 +684,18 @@ export const verifyDeliveryOtp = async (req, res) => {
     if (!order) {
       return res.status(404).json({ message: "Order Not Found" });
     }
-    const shopOrder = order.shopOrders.id(shopOrderId);
+    const shopOrder = order.shopOrders.id
+      ? order.shopOrders.id(shopOrderId)
+      : order.shopOrders?.find((so) => String(so._id) === String(shopOrderId));
     if (!shopOrder) {
       return res
         .status(400)
         .json({ message: "Enter valid order/shopOrder Id" });
     }
     if (
-      shopOrder.deliveryOtp !== otp ||
+      String(shopOrder.deliveryOtp).trim() !== String(otp).trim() ||
       !shopOrder.otpExpires ||
-      shopOrder.otpExpires < Date.now()
+      new Date(shopOrder.otpExpires).getTime() < Date.now()
     ) {
       return res.status(400).json({ message: "Invalid or Expired OTP" });
     }
