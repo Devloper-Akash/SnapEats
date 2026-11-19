@@ -5,10 +5,17 @@ import { FaUtensils } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { FaPen } from "react-icons/fa";
 import OwnerItemCard from "./OwnerItemCard.jsx";
+import OwnerOrderCard from "./OwnerOrderCard.jsx";
+import { IoReceipt } from "react-icons/io5";
 
 const OwnerDashboard = () => {
   const { myShopData } = useSelector((state) => state.owner);
+  const { myOrders } = useSelector((state) => state.user);
   const navigate = useNavigate();
+  const incomingOrders = (myOrders || []).filter(
+    (order) => order?.shopOrders?.status !== "delivered",
+  );
+
   return (
     <div className="w-full min-h-screen bg-[#fff9f6] flex flex-col items-center">
       <Nav />
@@ -63,6 +70,48 @@ const OwnerDashboard = () => {
               </p>
               <p className="text-gray-600">{myShopData.address}</p>
             </div>
+          </div>
+
+          <div className="w-full max-w-3xl bg-white shadow-lg rounded-xl p-4 sm:p-6 border border-orange-100 hover:shadow-2xl transition-all duration-300">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d] flex items-center justify-center">
+                  <IoReceipt size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+                    Incoming Orders
+                  </h2>
+                  <p className="text-xs sm:text-sm text-gray-500">
+                    {incomingOrders.length} active {incomingOrders.length === 1 ? "order" : "orders"} waiting for your kitchen
+                  </p>
+                </div>
+              </div>
+              <button
+                className="self-start sm:self-auto bg-[#ff4d2d] text-white px-4 py-2 rounded-full text-sm font-medium shadow-md hover:bg-orange-600 hover:shadow-lg active:scale-95 transition-all duration-200 cursor-pointer"
+                onClick={() => navigate("/my-orders")}
+              >
+                View All
+              </button>
+            </div>
+
+            {incomingOrders.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                {incomingOrders.slice(0, 3).map((order, index) => (
+                  <OwnerOrderCard data={order} key={order._id || index} compact />
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-orange-200 bg-[#fff9f6] p-5 text-center">
+                <IoReceipt className="mx-auto mb-2 text-[#ff4d2d]" size={28} />
+                <h3 className="text-base font-semibold text-gray-800">
+                  No incoming orders
+                </h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  New customer orders will show here as soon as they arrive.
+                </p>
+              </div>
+            )}
           </div>
 
           {myShopData.items.length == 0 && (

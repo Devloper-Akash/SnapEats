@@ -6,7 +6,8 @@ import { sendOtpMail } from "../utils/mail.js";
 export const signUp=async(req,res)=>{
     try {
         const {fullName,email,password,mobile,role} = req.body;
-        let user = await User.findOne({email})
+        const normalizedEmail = email?.trim().toLowerCase();
+        let user = await User.findOne({email: normalizedEmail});
         if(user){
             return res.status(400).json({message:"User Already exists."});
         }
@@ -21,7 +22,7 @@ export const signUp=async(req,res)=>{
 
         user = await User.create({
             fullName,
-            email,
+            email: normalizedEmail,
             role,
             mobile,
             password:hasedPassword
@@ -45,7 +46,8 @@ export const signUp=async(req,res)=>{
 export const signIn=async(req,res)=>{
     try {
         const {email,password} = req.body;
-        const user = await User.findOne({email})
+        const normalizedEmail = email?.trim().toLowerCase();
+        const user = await User.findOne({email: normalizedEmail});
         if(!user){
             return res.status(400).json({message:"User does not exists."});
         }
@@ -81,7 +83,8 @@ export const signOut = async(req,res)=>{
  export const sendOtp = async(req,res)=>{
     try {
         const {email} = req.body;
-        const user = await User.findOne({email});
+        const normalizedEmail = email?.trim().toLowerCase();
+        const user = await User.findOne({email: normalizedEmail});
         if(!user){
             return res.status(400).json({message:"User does not exists."});
         }
@@ -101,7 +104,8 @@ export const signOut = async(req,res)=>{
  export const verifyOtp = async(req,res)=>{
         try {
             const {email,otp} = req.body;
-            const user = await User.findOne({email});
+            const normalizedEmail = email?.trim().toLowerCase();
+            const user = await User.findOne({email: normalizedEmail});
             if(!user){
                 return res.status(400).json({message:"User does not exists."});
             }
@@ -124,10 +128,11 @@ export const signOut = async(req,res)=>{
 export const resetPassword = async(req,res)=>{
     try {
         const {email,newPassword} = req.body;
+        const normalizedEmail = email?.trim().toLowerCase();
         if(!newPassword || !newPassword.trim()){
             return res.status(400).json({message:"New password is required."});
         }
-        const user = await User.findOne({email});
+        const user = await User.findOne({email: normalizedEmail});
         if(!user){
             return res.status(400).json({message:"User does not exists."});
         }

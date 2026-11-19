@@ -11,14 +11,48 @@ import useGetMyShop from './hooks/useGetMyShop';
 import CreateEditShop from './pages/CreateEditShop';
 import AddItem from './pages/AddItem';
 import EditItem from './pages/EditItem';
+import useGetShopByCity from './hooks/useGetShopByCity';
+import useGetItemsByCity from './hooks/useGetItemsByCity';
+import CartPage from './pages/CartPage';
+import CheckOut from './pages/CheckOut';
+import OrderPlaced from './pages/OrderPlaced';
+import MyOrders from './pages/MyOrders';
+import useGetMyOrders from './hooks/useGetMyOrders';
+import useUpdateLocation from './hooks/useUpdateLocation';
+import TrackOrderPage from './pages/TrackOrderPage';
+import Shop from './pages/Shop';
+import { useEffect } from 'react';
+import { io } from 'socket.io-client';
+import { setSocket } from './redux/userSlice';
+import { useDispatch } from 'react-redux';
 export const serverUrl = "http://localhost:8000";
 
 const App = () => {
   useGetCurrentUser();
+  useUpdateLocation();
   useGetCity();
   useGetMyShop();
+  useGetShopByCity();
+  useGetItemsByCity();
+  useGetMyOrders();
   const {userData} = useSelector(state=>state.user);
+  const dispatch = useDispatch();
   const authFallbackRoute = userData ? "/" : "/signin";
+
+  useEffect(() => {
+    const socketInstance = io(serverUrl, {
+      withCredentials: true,
+    })
+    dispatch(setSocket(socketInstance));
+    socketInstance.on('connect',(socket)=>{
+      if(userData){
+        socketInstance.emit('identity',{userId: userData._id});
+      }
+    });
+    return ()=>{
+      socketInstance.disconnect();
+    }
+  }, [userData?._id]);
 
   return (
     <Routes>
@@ -31,6 +65,12 @@ const App = () => {
        <Route path='/create-edit-shop' element={userData?<CreateEditShop/>:<Navigate to={"/signin"}/>}></Route>
        <Route path='/add-item' element={userData?<AddItem/>:<Navigate to={"/signin"}/>}></Route>
         <Route path='/edit-item/:itemId' element={userData?<EditItem/>:<Navigate to={"/signin"}/>}></Route>
+        <Route path='/cart' element={userData?<CartPage/>:<Navigate to={"/signin"}/>}></Route>
+        <Route path='/checkout' element={userData?<CheckOut/>:<Navigate to={"/signin"}/>}></Route>
+         <Route path='/order-placed' element={userData?<OrderPlaced/>:<Navigate to={"/signin"}/>}></Route>
+         <Route path='/my-orders' element={userData?<MyOrders/>:<Navigate to={"/signin"}/>}></Route>
+         <Route path='/track-order/:orderId' element={userData?<TrackOrderPage/>:<Navigate to={"/signin"}/>}></Route>
+         <Route path='/shop/:shopId' element={userData?<Shop/>:<Navigate to={"/signin"}/>}></Route>
       <Route path='*' element={<Navigate to={authFallbackRoute} replace />}></Route>
     </Routes>
   )

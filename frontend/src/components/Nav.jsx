@@ -6,17 +6,25 @@ import { useDispatch, useSelector } from "react-redux";
 import { XIcon } from "@animateicons/react/lucide";
 import axios from "axios";
 import { serverUrl } from "@/App";
-import { setUserData } from "@/redux/userSlice";
+import { setUserData, setSearchItems } from "@/redux/userSlice";
 import { setMyShopData } from "@/redux/ownerSlice";
 import { PlusIcon } from "@animateicons/react/lucide";
 import { IoReceipt } from "react-icons/io5";
 import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
 
 const Nav = () => {
-  const { userData, currentCity,currentAddress } = useSelector((state) => state.user);
+  const { userData, currentCity, currentAddress, cartItems, myOrders } =
+    useSelector((state) => state.user);
+  const locationLabel =
+    currentAddress || currentCity || "Getting current location...";
   const { myShopData } = useSelector((state) => state.owner);
+  const incomingOrderCount = (myOrders || []).filter(
+    (order) => order?.shopOrders?.status !== "delivered",
+  ).length;
   const [showInfo, setShowInfo] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [query, setQuery] = useState("");
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const handleLogOut = async () => {
@@ -29,13 +37,37 @@ const Nav = () => {
       console.log(error);
     }
   };
+
+  const handleSearchItems = async () => {
+    if (!query || !currentCity) return;
+    try {
+      const result = await axios.get(
+        `${serverUrl}/api/item/search-items?query=${query}&city=${currentCity}`,
+        { withCredentials: true },
+      );
+      dispatch(setSearchItems(result.data));
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    if(query){
+      handleSearchItems();
+    }else{
+      dispatch(setSearchItems(null));
+    }
+  }, [query]);
+
   return (
     <div className="w-full h-[80px] flex items-center justify-between md:justify-center gap-[30px] px-[20px] fixed top-0 z-[9999] bg-[#fff9f6] overflow-visible">
       {showSearch && userData.role == "user" && (
         <div className="w-[90%] h-[70px] bg-white shadow-xl rounded-lg items-center gap-[20px] flex fixed top-[80px] left-[5%] md:hidden">
           <div className="flex items-center w-[30%] overflow-hidden gap-[10px] px-[10px] border-r-[2px] border-gray-400">
             <MapPinIcon size={25} duration={1} color="#ff4d2d" />
-            <div className="w-[80%] truncate text-gray-600">{currentCity}{currentAddress}</div>
+            <div className="w-[80%] truncate text-gray-600">
+              {locationLabel}
+            </div>
           </div>
           <div className="w-[80%] flex items-center gap-[10px] ">
             <SearchIcon size={25} duration={1} color="#ff4d2d" />
@@ -53,7 +85,9 @@ const Nav = () => {
         <div className="md:w-[60%] lg:w-[40%] h-[70px] bg-white shadow-xl rounded-lg items-center gap-[20px] hidden md:flex">
           <div className="flex items-center w-[30%] overflow-hidden gap-[10px] px-[10px] border-r-[2px] border-gray-400">
             <MapPinIcon size={25} duration={1} color="#ff4d2d" />
-            <div className="w-[80%] truncate text-gray-600">{currentCity}{currentAddress}</div>
+            <div className="w-[80%] truncate text-gray-600">
+              {locationLabel}
+            </div>
           </div>
           <div className="w-[80%] flex items-center gap-[10px] ">
             <SearchIcon size={25} duration={1} color="#ff4d2d" />
@@ -61,6 +95,8 @@ const Nav = () => {
               type="text"
               placeholder="Search Delicious Food"
               className="px-[10px] text-gray-700 outline-0 w-full"
+              onChange={(e) => setQuery(e.target.value)}
+              value={query}
             />
           </div>
         </div>
@@ -90,41 +126,63 @@ const Nav = () => {
           <>
             {myShopData && (
               <>
-                <button className="hidden md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]" onClick={()=>navigate("/add-item")}>
+                <button
+                  className="hidden md:flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]"
+                  onClick={() => navigate("/add-item")}
+                >
                   <PlusIcon size={25} duration={1} color="#ff4d2d" />
                   <span>Add Food Item</span>
                 </button>
 
                 <button className="md:hidden flex items-center gap-1 p-2 cursor-pointer rounded-full bg-[#ff4d2d]/10 text-[#ff4d2d]">
-                  <PlusIcon size={25} duration={1} color="#ff4d2d" onClick={()=>navigate("/add-item")}/>
+                  <PlusIcon
+                    size={25}
+                    duration={1}
+                    color="#ff4d2d"
+                    onClick={() => navigate("/add-item")}
+                  />
                 </button>
               </>
             )}
 
-            <div className="hidden md:flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d]">
+            <div
+              className="hidden md:flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d]"
+              onClick={() => navigate("/my-orders")}
+            >
               <IoReceipt size={20} />
               <span>My Orders</span>
               <span className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-[6px] py-[1px]">
-                0
+                {incomingOrderCount}
               </span>
             </div>
-            <div className="md:hidden flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d]">
+            <div
+              className="md:hidden flex items-center gap-2 cursor-pointer relative px-3 py-1 rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d]"
+              onClick={() => navigate("/my-orders")}
+            >
               <IoReceipt size={20} />
               <span className="absolute -right-2 -top-2 text-xs font-bold text-white bg-[#ff4d2d] rounded-full px-[6px] py-[1px]">
-                0
+                {incomingOrderCount}
               </span>
             </div>
           </>
         ) : (
           <>
-            <div className="relative cursor-pointer">
-              <ShoppingCartIcon size={25} duration={1} color="#ff4d2d" />
-              <span className="absolute right-[-9px] top-[-12px] text-[#ff4d2d]">
-                0
-              </span>
-            </div>
+            {userData.role == "user" && (
+              <div
+                className="relative cursor-pointer"
+                onClick={() => navigate("/cart")}
+              >
+                <ShoppingCartIcon size={25} duration={1} color="#ff4d2d" />
+                <span className="absolute right-[-9px] top-[-12px] text-[#ff4d2d]">
+                  {cartItems.length}
+                </span>
+              </div>
+            )}
 
-            <button className="hidden md:block px-3 py-1 rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d] text-sm font-medium">
+            <button
+              className="hidden md:block px-3 py-1 rounded-lg bg-[#ff4d2d]/10 text-[#ff4d2d] text-sm font-medium"
+              onClick={() => navigate("/my-orders")}
+            >
               My Orders
             </button>
           </>
@@ -137,11 +195,16 @@ const Nav = () => {
           {userData?.fullName.slice(0, 1)}
         </div>
         {showInfo && (
-          <div className="fixed top-[80px] right-[10px] md:right-[10%] lg:right-[25%] w-[180px] bg-white shadow-2xl rounded-xl p-[20px] flex flex-col gap-[10px] z-[9999]">
+          <div
+            className={`fixed top-[80px] right-[10px] ${userData.role == "deliveryBoy" ? "md:right-[20%] lg:right-[35%]" : "md:right-[10%] lg:right-[25%]"}  w-[180px] bg-white shadow-2xl rounded-xl p-[20px] flex flex-col gap-[10px] z-[9999]`}
+          >
             <div className="text-[17px] font-semibold">{userData.fullName}</div>
 
             {userData.role == "user" && (
-              <div className="md:hidden text-[#ff4d2d] font-semibold cursor-pointer">
+              <div
+                className="md:hidden text-[#ff4d2d] font-semibold cursor-pointer"
+                onClick={() => navigate("/my-orders")}
+              >
                 My Orders
               </div>
             )}

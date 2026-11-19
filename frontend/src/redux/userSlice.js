@@ -1,29 +1,122 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const userSlice = createSlice({
-    name:"user",
-    initialState:{
+    name: "user",
+    initialState: {
         userData: null,
         currentCity: null,
-        currentState:null,
+        currentState: null,
         currentAddress: null,
+        shopsInMyCity: null,
+        itemsInMyCity: null,
+        cartItems: [],
+        totalAmount: 0,
+        myOrders: [],
+        searchItems: null,
+        socket: null
     },
-    reducers:{
-        setUserData:(state,action)=>{
+    reducers: {
+        setUserData: (state, action) => {
             state.userData = action.payload;
         },
-        setCurrentCity:(state,action)=>{
+        setCurrentCity: (state, action) => {
             state.currentCity = action.payload;
         },
-        setCurrentState:(state,action)=>{
+        setCurrentState: (state, action) => {
             state.currentState = action.payload;
         },
-        setCurrentAddress:(state,action)=>{
+        setCurrentAddress: (state, action) => {
             state.currentAddress = action.payload;
         },
+        setShopsInMyCity: (state, action) => {
+            state.shopsInMyCity = action.payload;
+        },
+        setItemsInMyCity: (state, action) => {
+            state.itemsInMyCity = action.payload;
+        },
+        setSocket: (state, action) => {
+            state.socket = action.payload;
+        },
+        addToCart: (state, action) => {
+            const cartItem = action.payload;
+            const existingItem = state.cartItems.find(i => i.id == cartItem.id);
+            if (existingItem) {
+                existingItem.quantity += cartItem.quantity;
+            } else {
+                state.cartItems.push(cartItem);
+            }
+
+            state.totalAmount = state.cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0)
+        },
+        updateQuantity: (state, action) => {
+            const { id, quantity } = action.payload;
+            const item = state.cartItems.find(i => i.id == id)
+            if (item) {
+                item.quantity = quantity;
+            }
+            state.totalAmount = state.cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        },
+        removeCartItem: (state, action) => {
+            state.cartItems = state.cartItems.filter(i => i.id !== action.payload);
+            state.totalAmount = state.cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        },
+
+        setMyOrders: (state, action) => {
+            state.myOrders = action.payload;
+        },
+
+        addMyOrder: (state, action) => {
+            const newOrder = action.payload;
+            if (!newOrder?._id) return;
+            const exists = state.myOrders?.some((o) => String(o._id) === String(newOrder._id));
+            if (!exists) {
+                state.myOrders = [newOrder, ...(state.myOrders || [])];
+            }
+        },
+        updateMyOrder: (state, action) => {
+            const updatedOrder = action.payload;
+            if (!updatedOrder?._id) return;
+            state.myOrders = state.myOrders?.map((order) =>
+                order._id === updatedOrder._id ? updatedOrder : order
+            ) || [];
+        },
+
+        updateRealtimeOrderStatus: (state, action) => {
+            const { orderId, shopId, status } = action.payload;
+            const order = state.myOrders?.find((o) => String(o._id) === String(orderId));
+            if (order) {
+                if (Array.isArray(order.shopOrders)) {
+                    const shopOrder = order.shopOrders.find((s) =>
+                        String(s.shop?._id || s.shop) === String(shopId) || String(s._id) === String(shopId)
+                    );
+                    if (shopOrder) {
+                        shopOrder.status = status;
+                    }
+                } else if (order.shopOrders) {
+                    order.shopOrders.status = status;
+                }
+            }
+        },
+
+        orderAssignedDeliveryBoy: (state, action) => {
+            const { orderId, shopOrderId, assignedDeliveryBoy } = action.payload;
+            const order = state.myOrders?.find((o) => String(o._id) === String(orderId));
+            if (order) {
+                if (Array.isArray(order.shopOrders)) {
+                    const so = order.shopOrders.find((s) => !shopOrderId || String(s._id) === String(shopOrderId));
+                    if (so) so.assignedDeliveryBoy = assignedDeliveryBoy;
+                } else if (order.shopOrders) {
+                    order.shopOrders.assignedDeliveryBoy = assignedDeliveryBoy;
+                }
+            }
+        },
+
+        setSearchItems: (state, action) => {
+            state.searchItems = action.payload;
+        }
 
     }
 })
 
-export const {setUserData,setCurrentCity,setCurrentState,setCurrentAddress} = userSlice.actions;
+export const { setUserData, setCurrentCity, setCurrentState, setCurrentAddress, setShopsInMyCity, setItemsInMyCity, addToCart, updateQuantity, removeCartItem, setMyOrders, updateMyOrder, updateRealtimeOrderStatus, addMyOrder, orderAssignedDeliveryBoy, setSearchItems, setSocket } = userSlice.actions;
 export default userSlice.reducer;

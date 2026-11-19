@@ -4,12 +4,10 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  service: "gmail",
   auth: {
-    user: process.env.EMAIL,
-    pass: process.env.PASS,
+    user: process.env.EMAIL?.trim(),
+    pass: process.env.PASS?.trim(),
   },
 });
 
@@ -21,3 +19,14 @@ export const sendOtpMail = async(to,otp)=>{
     html:`<p> Your OTP for resetting your password is <b>${otp}</b>. It is valid for 5 minutes.</p>`
   })
 }
+
+export const sendDeliveryOtpMail = async(user,otp)=>{
+  await transporter.sendMail({
+    from: process.env.EMAIL,
+    to: user.email,
+    subject:"Delivery OTP",
+    html:`<p> Your OTP for delivery is <b>${otp}</b>. It is valid for 5 minutes.</p>`
+  })
+}
+
+
