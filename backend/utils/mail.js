@@ -65,6 +65,12 @@ export const sendDeliveryOtpMail = async (user, otp) => {
     return;
   }
 
+  if (process.env.RENDER) {
+    throw new Error(
+      "Delivery OTP email is not configured for Render. Add RESEND_API_KEY and EMAIL_FROM to the backend service environment variables."
+    );
+  }
+
   if (!process.env.EMAIL || !process.env.PASS) {
     throw new Error("Configure RESEND_API_KEY and EMAIL_FROM or provide SMTP credentials (EMAIL/PASS)");
   }
