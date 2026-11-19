@@ -29,6 +29,7 @@ export const signUp=async(req,res)=>{
         });
 
         const token = await genToken(user._id);
+<<<<<<< HEAD
         const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
         res.cookie("token", token, {
             secure: isProduction,
@@ -36,6 +37,14 @@ export const signUp=async(req,res)=>{
             maxAge: 7 * 24 * 60 * 60 * 1000,
             httpOnly: true
         });
+=======
+        res.cookie("token",token,{
+            secure:true,
+            sameSite:"none",
+            maxAge:7*24*60*60*1000,
+            httpOnly:true
+        })
+>>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
 
         return res.status(201).json(user);
     } catch (error) {
@@ -59,6 +68,7 @@ export const signIn=async(req,res)=>{
         }
 
         const token = await genToken(user._id);
+<<<<<<< HEAD
         const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
         res.cookie("token", token, {
             secure: isProduction,
@@ -66,6 +76,14 @@ export const signIn=async(req,res)=>{
             maxAge: 7 * 24 * 60 * 60 * 1000,
             httpOnly: true
         });
+=======
+        res.cookie("token",token,{
+            secure:true,
+            sameSite:"none",
+            maxAge:7*24*60*60*1000,
+            httpOnly:true
+        })
+>>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
 
         return res.status(200).json(user);
     } catch (error) {
@@ -174,6 +192,7 @@ export const googleAuth = async(req,res)=>{
         }
 
         const token = await genToken(user._id);
+<<<<<<< HEAD
         const isProduction = process.env.NODE_ENV === "production" || !!process.env.RENDER;
         res.cookie("token", token, {
             secure: isProduction,
@@ -181,6 +200,14 @@ export const googleAuth = async(req,res)=>{
             maxAge: 7 * 24 * 60 * 60 * 1000,
             httpOnly: true
         });
+=======
+        res.cookie("token",token,{
+            secure:true,
+            sameSite:"none",
+            maxAge:7*24*60*60*1000,
+            httpOnly:true
+        })
+>>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
 
         return res.status(200).json(user);
 

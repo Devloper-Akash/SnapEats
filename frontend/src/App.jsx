@@ -25,9 +25,13 @@ import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { setSocket } from './redux/userSlice';
 import { useDispatch } from 'react-redux';
+<<<<<<< HEAD
 export const serverUrl =
   import.meta.env.VITE_SERVER_URL ||
   (import.meta.env.MODE === "production" ? "" : "http://localhost:8000");
+=======
+export const serverUrl = "https://snapeats-backend-g91m.onrender.com";
+>>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
 
 const App = () => {
   useGetCurrentUser();

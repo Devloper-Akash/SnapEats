@@ -33,6 +33,7 @@ const isAllowedOrigin = (origin) => {
 
 const io = new Server(server, {
   cors: {
+<<<<<<< HEAD
     origin: (origin, callback) => {
       if (isAllowedOrigin(origin)) {
         callback(null, true);
@@ -40,6 +41,9 @@ const io = new Server(server, {
         callback(null, true);
       }
     },
+=======
+    origin: "https://snapeats-fjjn.onrender.com",
+>>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   },
@@ -50,6 +54,7 @@ app.set("io", io);
 const port = process.env.PORT || 5000;
 app.use(
   cors({
+<<<<<<< HEAD
     origin: (origin, callback) => {
       if (isAllowedOrigin(origin)) {
         callback(null, true);
@@ -57,6 +62,9 @@ app.use(
         callback(null, true);
       }
     },
+=======
+    origin: "https://snapeats-fjjn.onrender.com",
+>>>>>>> 43d8e37944abbb207924c45d12f9e860f7348cb5
     credentials: true,
   }),
 );
