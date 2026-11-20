@@ -26,7 +26,64 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
     throw new Error("Recipient email address is missing");
   }
 
-  // 1. Try Resend HTTPS API (Port 443 - works on Render)
+  // 1. Try Google Apps Script Webhook (Port 443 - sends via Gmail to ANY recipient)
+  const gmailWebhookUrl = process.env.GMAIL_WEBHOOK_URL?.trim();
+  if (gmailWebhookUrl) {
+    try {
+      const response = await fetch(gmailWebhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: toEmail,
+          subject,
+          html,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("Email sent successfully via Gmail Webhook to:", toEmail);
+        return;
+      }
+      const details = await response.text();
+      console.warn(`Gmail Webhook returned ${response.status}: ${details}`);
+    } catch (err) {
+      console.warn("Gmail Webhook failed:", err?.message || err);
+    }
+  }
+
+  // 2. Try Brevo HTTPS API (Port 443 - sends to ANY recipient without domain verification!)
+  const brevoApiKey = process.env.BREVO_API_KEY?.trim() || process.env.SENDINBLUE_API_KEY?.trim();
+  if (brevoApiKey) {
+    try {
+      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+          "api-key": brevoApiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          sender: { name: "SnapEats", email: emailUser },
+          to: [{ email: toEmail }],
+          subject,
+          htmlContent: html,
+        }),
+      });
+
+      if (response.ok) {
+        console.log("Email sent successfully via Brevo to:", toEmail);
+        return;
+      }
+      const details = await response.text();
+      console.warn(`Brevo API returned ${response.status}: ${details}`);
+    } catch (err) {
+      console.warn("Brevo API failed:", err?.message || err);
+    }
+  }
+
+  // 3. Try Resend HTTPS API (Port 443 - works on Render)
   const resendApiKey = process.env.RESEND_API_KEY?.trim();
   let resendFailure = null;
   if (resendApiKey) {
@@ -52,6 +109,7 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
       });
 
       if (response.ok) {
+        console.log("Email sent successfully via Resend to:", toEmail);
         return;
       }
       const details = await response.text();
@@ -63,35 +121,6 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
     } catch (err) {
       console.warn("Resend API failed:", err?.message || err);
       resendFailure = err;
-    }
-  }
-
-  // 2. Try Brevo HTTPS API as secondary backup (Port 443)
-  const brevoApiKey = process.env.BREVO_API_KEY?.trim() || process.env.SENDINBLUE_API_KEY?.trim();
-  if (brevoApiKey) {
-    try {
-      const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-        method: "POST",
-        headers: {
-          "api-key": brevoApiKey,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          sender: { name: "SnapEats", email: emailUser },
-          to: [{ email: toEmail }],
-          subject,
-          htmlContent: html,
-        }),
-      });
-
-      if (response.ok) {
-        return;
-      }
-      const details = await response.text();
-      console.warn(`Brevo API returned ${response.status}: ${details}`);
-    } catch (err) {
-      console.warn("Brevo API failed:", err?.message || err);
     }
   }
 
