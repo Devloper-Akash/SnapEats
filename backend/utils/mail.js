@@ -30,17 +30,23 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
   const gmailWebhookUrl = process.env.GMAIL_WEBHOOK_URL?.trim();
   if (gmailWebhookUrl) {
     try {
-      const response = await fetch(gmailWebhookUrl, {
+      const payload = JSON.stringify({ to: toEmail, subject, html });
+
+      // Google Apps Script returns 302 after executing doPost.
+      // The redirect URL returns the script's response via GET.
+      let response = await fetch(gmailWebhookUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          to: toEmail,
-          subject,
-          html,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+        redirect: "manual",
       });
+
+      if (response.status >= 300 && response.status < 400) {
+        const redirectUrl = response.headers.get("location");
+        if (redirectUrl) {
+          response = await fetch(redirectUrl, { redirect: "follow" });
+        }
+      }
 
       if (response.ok) {
         console.log("Email sent successfully via Gmail Webhook to:", toEmail);
