@@ -1,87 +1,133 @@
-import React from 'react';
-import { FaLeaf } from "react-icons/fa";
-import { FaDrumstickBite } from "react-icons/fa";
-import { FaStar } from "react-icons/fa";
-import { FaMinus } from "react-icons/fa";
-import { useState } from 'react';
-import { FaPlus } from "react-icons/fa6";
-import { useDispatch } from 'react-redux';
-import { FaShoppingCart } from "react-icons/fa";
-import { addToCart } from '../redux/userSlice';
-import { useSelector } from 'react-redux';
+import React, { useState } from "react";
+import { Check, Drumstick, Leaf, Minus, Plus, ShoppingCart, Star, Store } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { addToCart } from "../redux/userSlice";
 
+function FoodCard({ data, shopName: providedShopName }) {
+  const [quantity, setQuantity] = useState(0);
+  const dispatch = useDispatch();
+  const cartItems = useSelector((state) => state.user.cartItems);
+  const rating = Number(data.rating?.average || 0);
+  const ratingCount = Number(data.rating?.count || 0);
+  const price = Number(data.price || 0);
+  const isVeg = data.foodType === "Veg";
+  const alreadyInCart = cartItems.some((item) => String(item.id) === String(data._id));
+  const shopId = typeof data.shop === "object" ? data.shop?._id : data.shop;
+  const shopName = providedShopName || (typeof data.shop === "object" ? data.shop?.name : null);
 
-function FoodCard({data}){
-    const [quantity,setQuantity] = useState(0);
-    const dispatch = useDispatch();
-    const {cartItems} = useSelector(state=>state.user);
-    const renderStars =(rating)=>{
-        const stars = [];
-        for(let i=1;i<=5;i++){
-            if(i<=Math.floor(rating)){
-                stars.push(<span key={i} className='text-yellow-400 text-lg'>&#9733;</span>);
-            }
-            else if(i===Math.ceil(rating) && !Number.isInteger(rating)){
-                stars.push(<span key={i} className='text-yellow-400 text-lg'>&#9734;</span>);
-            }
-            else{
-                stars.push(<span key={i} className='text-gray-300 text-lg'>&#9734;</span>);
-            }
-        }
-        return stars;
-    }
+  const addItem = () => {
+    const quantityToAdd = quantity || 1;
+    dispatch(addToCart({
+      id: data._id,
+      name: data.name,
+      price,
+      image: data.image,
+      shop: shopId,
+      quantity: quantityToAdd,
+      foodType: data.foodType,
+    }));
+    setQuantity(0);
+  };
 
-    const handleIncrease=()=>{
-        const newQuantity = quantity + 1;
-        setQuantity(newQuantity);
-    }
+  return (
+    <article className="group flex min-w-0 w-full max-w-[360px] flex-col overflow-hidden rounded-[26px] border border-[#f0e2d9] bg-white shadow-[0_8px_24px_-20px_rgba(75,39,23,0.45)] transition duration-300 hover:-translate-y-1 hover:border-[#f3c9b7] hover:shadow-[0_22px_38px_-24px_rgba(75,39,23,0.38)]">
+      <div className="relative aspect-[1.55] overflow-hidden bg-[#fff5ee]">
+        {data.image ? (
+          <img
+            src={data.image}
+            alt={data.name}
+            loading="lazy"
+            className="size-full object-cover transition duration-500 group-hover:scale-[1.04]"
+          />
+        ) : (
+          <div className="flex size-full items-center justify-center bg-gradient-to-br from-[#fff1e5] to-[#f7ded0] text-[#d98662]">
+            <ShoppingCart size={34} />
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#25160f]/25 to-transparent" />
+        <span className={`absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-white/80 bg-white/95 px-2.5 py-1 text-[11px] font-bold shadow-sm ${isVeg ? "text-[#2d7a46]" : "text-[#c43c32]"}`}>
+          <span className={`flex size-4 items-center justify-center rounded-full border ${isVeg ? "border-[#2d7a46]" : "border-[#c43c32]"}`}>
+            {isVeg ? <Leaf size={10} /> : <Drumstick size={10} />}
+          </span>
+          {isVeg ? "Veg" : "Non-veg"}
+        </span>
+        {data.category && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-[#655950] shadow-sm">
+            {data.category}
+          </span>
+        )}
+        {alreadyInCart && (
+          <span className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full bg-white text-[#32804c] shadow-md" aria-label="Already in cart">
+            <Check size={17} strokeWidth={2.5} />
+          </span>
+        )}
+      </div>
 
-    const handleDecrease=()=>{
-        const newQuantity = quantity - 1;
-        if(newQuantity >= 0){
-            setQuantity(newQuantity);
-        }
-    }
-
-    return (
-        <div className='w-[250px] rounded-2xl border-2 border-[#ff4d2d] bg-white shadow-md overflow-hidden transition-all duration-300 flex flex-col gap-2 hover:scale-103 hover:shadow-lg'>
-            <div className='w-full h-[170px] bg-white relative flex justify-center items-center p-2'>
-                <div className='absolute top-3 right-3 bg-white rounded-full p-1 shadow'>{data.foodType == "Veg"?<FaLeaf className='text-green-700 text-lg'/>:<FaDrumstickBite className='text-red-700 text-lg'/>}</div> 
-                <img src={data.image} alt={data.name} className='w-full h-full object-contain transition-transform duration-300 hover:scale-100'/>
-            </div>
-            <div className='w-full flex flex-col gap-1 p-3'>
-                <h3 className='text-lg font-semibold text-gray-900 truncate'>{data.name}</h3>
-                {/* <p className='text-gray-600'>{data.description}</p> */}
-                <div className='flex items-center gap-1'>
-                    {renderStars(data.rating.average)}
-                    <span className='text-sm text-gray-600'>({data.rating.count})</span>
-                </div>
-                <div className='flex justify-between items-center mt-1'>
-                    <span className='text-xl font-bold text-[#ff4d2d]'>₹{data.price.toFixed(2)}</span>
-                    <div className='flex items-center border rounded-full overflow-hidden shadow-sm'>
-                        <button className='px-2 py-1 hover:bg-gray-100 transition cursor-pointer' onClick={handleDecrease}>
-                            <FaMinus size={12}/>
-                        </button>
-                        <span>{quantity}</span>
-                        <button className='px-2 py-1 hover:bg-gray-100 transition cursor-pointer'  onClick={handleIncrease}><FaPlus size={12}/></button>
-                        <button className={`${cartItems.some(i=>i.id==data._id)?'bg-gray-800':'bg-[#ff4d2d]'} text-white px-3 py-2 transition-colors`} onClick={() => {
-                            quantity > 0 ?
-                            dispatch(addToCart({
-                            id: data._id,
-                            name: data.name,
-                            price: data.price,
-                            image: data.image,
-                            shop: data.shop,
-                            quantity: quantity,
-                            foodType: data.foodType
-                        })):null}}>
-                            <FaShoppingCart size={16}/>
-                        </button>
-                    </div>
-                </div>
-            </div>
+      <div className="flex min-w-0 flex-1 flex-col p-3.5 sm:p-4">
+        <h3 className="truncate text-[17px] font-bold tracking-tight text-[#302923] sm:text-lg" title={data.name}>{data.name}</h3>
+        {shopName && (
+          <Link
+            to={shopId ? `/shop/${shopId}` : "#"}
+            onClick={(event) => !shopId && event.preventDefault()}
+            className="mt-1 inline-flex max-w-full items-center gap-1.5 truncate text-xs font-semibold text-[#b45a38] transition hover:text-[#e64b2e]"
+          >
+            <Store size={13} className="shrink-0" />
+            <span className="truncate">{shopName}</span>
+          </Link>
+        )}
+        <div className="mt-2 flex min-h-5 items-center gap-1.5 text-xs">
+          {ratingCount > 0 ? (
+            <>
+              <span className="inline-flex items-center gap-1 rounded-md bg-[#edf7ef] px-1.5 py-0.5 font-bold text-[#287343]">
+                <Star size={12} fill="currentColor" /> {rating.toFixed(1)}
+              </span>
+              <span className="text-[#958a82]">({ratingCount} reviews)</span>
+            </>
+          ) : (
+            <span className="font-medium text-[#958a82]">A neighborhood favorite</span>
+          )}
         </div>
-    );
+
+        <div className="mt-3 border-t border-[#f2e8e1] pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-lg font-extrabold tracking-tight text-[#e64b2e] sm:text-xl">₹{price.toFixed(2)}</span>
+            {alreadyInCart && <span className="text-[10px] font-semibold text-[#32804c]">In your cart</span>}
+          </div>
+          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex h-9 items-center rounded-full border border-[#eadfd7] bg-[#fffaf6] p-1">
+              <button
+                type="button"
+                aria-label={`Remove one ${data.name}`}
+                disabled={quantity === 0}
+                className="flex size-6 items-center justify-center rounded-full text-[#635951] transition hover:bg-white hover:text-[#d83e22] disabled:cursor-not-allowed disabled:opacity-35"
+                onClick={() => setQuantity((value) => Math.max(0, value - 1))}
+              >
+                <Minus size={14} />
+              </button>
+              <span className="min-w-5 text-center text-sm font-bold text-[#302923]" aria-live="polite">{quantity}</span>
+              <button
+                type="button"
+                aria-label={`Add one ${data.name}`}
+                className="flex size-6 items-center justify-center rounded-full text-[#635951] transition hover:bg-white hover:text-[#d83e22]"
+                onClick={() => setQuantity((value) => value + 1)}
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            <button
+              type="button"
+              aria-label={`Add ${quantity || 1} ${data.name} to cart`}
+              onClick={addItem}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full bg-[#ff4d2d] px-3 text-xs font-bold text-white shadow-[0_5px_14px_-8px_rgba(255,77,45,0.8)] transition hover:-translate-y-0.5 hover:bg-[#e94325] active:translate-y-0"
+            >
+              <ShoppingCart size={15} /> <span>Add</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 export default FoodCard;

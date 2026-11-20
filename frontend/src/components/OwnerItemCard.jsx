@@ -1,6 +1,5 @@
 import React from "react";
-import { FaPen } from "react-icons/fa6";
-import { GoTrash } from "react-icons/go";
+import { Pencil, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverUrl } from "@/App";
@@ -23,61 +22,51 @@ function OwnerItemCard({ data }) {
   }
 
   return (
-    <div className="w-full bg-white rounded-xl p-3 sm:p-4 flex items-center gap-3 sm:gap-4 border border-gray-100 hover:border-orange-200 hover:shadow-md transition-all duration-300 group">
-      {/* Food Image */}
+    <article className="group flex w-full items-center gap-3 rounded-[20px] border border-[#f0e5de] bg-[#fffdfb] p-3 transition duration-200 hover:border-[#f1c8b7] hover:shadow-[0_12px_28px_-24px_rgba(75,39,23,0.48)] sm:gap-4 sm:p-3.5">
       <div className="relative shrink-0">
         <img
           src={data.image}
           alt={data.name}
-          className="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl"
+          className="size-[68px] rounded-[16px] object-cover sm:size-[76px]"
         />
-        {/* Veg/Non-Veg badge */}
         <div
-          className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-md border-2 border-white flex items-center justify-center ${
-            isVeg ? "bg-green-500" : "bg-red-500"
-          }`}
+          className={`absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-md border-2 border-white ${isVeg ? "bg-[#428450]" : "bg-[#bd5042]"}`}
+          aria-label={isVeg ? "Vegetarian" : "Non-vegetarian"}
         >
-          <div className="w-2 h-2 rounded-full bg-white" />
+          <div className="size-1.5 rounded-full bg-white" />
         </div>
       </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <h3 className="text-sm sm:text-base font-bold text-gray-900 truncate">
-          {data.name}
-        </h3>
-        <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-            {data.category}
-          </span>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full ${
-              isVeg
-                ? "bg-green-50 text-green-700"
-                : "bg-red-50 text-red-700"
-            }`}
-          >
-            {data.foodType}
-          </span>
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-extrabold text-[#302923] sm:text-base" title={data.name}>{data.name}</h3>
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          {data.category && <span className="max-w-[130px] truncate rounded-full bg-[#f6eee9] px-2.5 py-1 text-[10px] font-semibold text-[#796b61]">{data.category}</span>}
+          <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${isVeg ? "bg-[#edf5ed] text-[#3b7547]" : "bg-[#fbefed] text-[#a6463d]"}`}>{isVeg ? "Veg" : "Non-veg"}</span>
         </div>
-        <p className="text-sm sm:text-base font-bold text-[#ff4d2d] mt-1">
-          ₹{data.price.toFixed(2)}
-        </p>
+        <p className="mt-1.5 text-sm font-extrabold tracking-tight text-[#e64b2e]">₹{Number(data.price || 0).toFixed(2)}</p>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col items-center gap-1.5 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity">
+      <div className="flex shrink-0 items-center gap-1">
         <button
-          className="p-2 rounded-lg hover:bg-orange-50 text-gray-500 hover:text-[#ff4d2d] cursor-pointer transition-colors duration-200"
+          type="button"
+          aria-label={`Edit ${data.name}`}
+          title="Edit dish"
+          className="flex size-9 items-center justify-center rounded-xl text-[#84776e] transition hover:bg-[#fff0e7] hover:text-[#e64b2e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d2d]/30"
           onClick={() => navigate(`/edit-item/${data._id}`)}
         >
-          <FaPen size={14} />
+          <Pencil size={15} />
         </button>
-        <button className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-500 cursor-pointer transition-colors duration-200" onClick={handleDelete}>
-          <GoTrash size={14} />
+        <button
+          type="button"
+          aria-label={`Delete ${data.name}`}
+          title="Delete dish"
+          className="flex size-9 items-center justify-center rounded-xl text-[#a2938a] transition hover:bg-[#fbefed] hover:text-[#c34438] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d2d]/30"
+          onClick={handleDelete}
+        >
+          <Trash2 size={15} />
         </button>
       </div>
-    </div>
+    </article>
   );
 }
 

@@ -8,6 +8,7 @@ const mapSlice = createSlice({
         lon:null
        },
        address:null,
+       manualSelection:false,
 
     },
     reducers:{
@@ -18,10 +19,13 @@ const mapSlice = createSlice({
        },
         setAddress:(state,action)=>{
             state.address = action.payload;
+        },
+        setManualSelection:(state,action)=>{
+            state.manualSelection = action.payload;
         }
 
     }
 })
 
-export const { setLocation, setAddress } = mapSlice.actions;
+export const { setLocation, setAddress, setManualSelection } = mapSlice.actions;
 export default mapSlice.reducer;

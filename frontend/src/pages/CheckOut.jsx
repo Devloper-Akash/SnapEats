@@ -1,21 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { MoveLeftIcon } from "@animateicons/react/lucide";
-import { useNavigate } from "react-router-dom";
-import { MapPinIcon } from "@animateicons/react/lucide";
-import { SearchIcon } from "@animateicons/react/huge";
-import { TbCurrentLocationFilled } from "react-icons/tb";
+import { ArrowLeft, ArrowRight, Bike, Check, CreditCard, LocateFixed, MapPin, Search, ShieldCheck, ShoppingBag, Sparkles, Wallet } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import { useDispatch, useSelector } from "react-redux";
 import "leaflet/dist/leaflet.css";
-import { setLocation, setAddress } from "@/redux/mapSlice";
+import { setLocation, setAddress, setManualSelection } from "@/redux/mapSlice";
 import {
   setCurrentAddress,
   setCurrentCity,
   setCurrentState,
 } from "@/redux/userSlice";
-import { MdDeliveryDining } from "react-icons/md";
-import { CiMobile1 } from "react-icons/ci";
-import { FaCreditCard } from "react-icons/fa";
 import { useMap } from "react-leaflet";
 import axios from "axios";
 import { serverUrl } from "@/App";
@@ -40,6 +34,7 @@ function CheckOut() {
 
   const deliveryFee = totalAmount > 500 ? 0 : 40;
   const amountWithDeliveryFee = totalAmount + deliveryFee;
+  const subtotal = Number(totalAmount || 0);
 
   const apiKey = import.meta.env.VITE_GEOAPIKEY;
   const navigate = useNavigate();
@@ -47,6 +42,7 @@ function CheckOut() {
   const onDragEnd = (e) => {
     console.log(e.target._latlng);
     const { lat, lng } = e.target._latlng;
+    dispatch(setManualSelection(true));
     dispatch(setLocation({ lat, lon: lng }));
     getAddressByLatLng(lat, lng);
   };
@@ -102,6 +98,7 @@ function CheckOut() {
   const handlePosition = async (position) => {
     try {
       const { latitude, longitude } = position.coords;
+      dispatch(setManualSelection(false));
       dispatch(setLocation({ lat: latitude, lon: longitude }));
       const addressFound = await getAddressByLatLng(latitude, longitude);
       setLocationMessage(
@@ -120,6 +117,7 @@ function CheckOut() {
         `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(addressInput)}&apiKey=${apiKey}`,
       );
       const { lat, lon } = result.data.features[0].properties;
+      dispatch(setManualSelection(true));
       dispatch(setLocation({ lat, lon }));
       await getAddressByLatLng(lat, lon);
     } catch (error) {
@@ -224,150 +222,226 @@ function CheckOut() {
   }, [address]);
 
   return (
-    <div className="relative min-h-screen bg-[#fff9f6] p-6 flex items-center justify-center">
-      <button
-        type="button"
-        aria-label="Go back"
-        className="absolute top-4 left-4 z-10 flex h-10 w-10 items-center justify-center rounded-full text-[#ff4d2d] transition-all duration-200 hover:-translate-x-0.5 hover:bg-orange-100 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ff4d2d] focus-visible:ring-offset-2 sm:top-6 sm:left-6 sm:h-11 sm:w-11"
-        onClick={() => navigate(-1)}
-      >
-        <MoveLeftIcon size={24} duration={1} />
-      </button>
-      <div className="w-full max-w-[900px] bg-white rounded-lg shadow-lg p-6 sm:p-8 space-y-4">
-        <h1 className="text-2xl font-bold mb-4 text-gray-800">Checkout</h1>
+    <main className="relative min-h-screen overflow-hidden bg-[#fff9f6] text-[#302923]">
+      <div className="pointer-events-none absolute -right-24 -top-32 size-80 rounded-full bg-[#ffc49e]/20 blur-3xl" />
+      <div className="pointer-events-none absolute -left-28 top-[460px] size-72 rounded-full bg-[#ff4d2d]/[0.06] blur-3xl" />
 
-        <section>
-          <h2 className="text-lg font-semibold flex items-center gap-2 text-gray-800 mb-2">
-            <MapPinIcon size={20} duration={1} color="#ff4d2d" />
-            Delivery Location
-          </h2>
-          <div className="gap-2 flex mb-3">
-            <input
-              type="text"
-              placeholder="Enter your delivery address"
-              className=" flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-[#ff4d2d] focus:ring-offset-2"
-              value={addressInput}
-              onChange={(e) => {
-                setAddressInput(e.target.value);
-              }}
-            />
-            <button
-              className="bg-[#ff4d2d] text-white py-2 px-3 rounded-md hover:bg-[#ff3a1a] transition-colors items-center justify-center"
-              onClick={getLatlngByAddress}
-            >
-              <SearchIcon size={20} duration={1} />
-            </button>
-            <button
-              type="button"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg flex items-center justify-center"
-              onClick={getCurrentLocation}
-            >
-              <TbCurrentLocationFilled size={20} />
-            </button>
-          </div>
-          {locationMessage && (
-            <p className="text-sm text-gray-600 mb-3">{locationMessage}</p>
-          )}
-          <div className="rounded-xl border overflow-hidden">
-            <div className="h-64 w-full flex items-center justify-center">
-              <MapContainer
-                className={"h-full w-full"}
-                center={[location?.lat, location?.lon]}
-                zoom={13}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <RecenterMap location={location} />
-                <Marker
-                  position={location}
-                  draggable
-                  eventHandlers={{ dragend: onDragEnd }}
-                ></Marker>
-              </MapContainer>
+      <div className="relative mx-auto w-full max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-7 lg:px-8">
+        <header className="flex items-center justify-between border-b border-[#f1e3da] pb-4">
+          <Link to="/" aria-label="SnapEats home" className="flex items-center gap-2.5">
+            <span className="logo-smoke-mark flex size-9 items-center justify-center rounded-[14px] text-white shadow-sm sm:size-10 sm:rounded-2xl">
+              <Bike size={20} strokeWidth={2.5} />
+            </span>
+            <span className="logo-smoke text-xl font-extrabold tracking-tight">SnapEats</span>
+          </Link>
+          <button
+            type="button"
+            aria-label="Return to cart"
+            onClick={() => navigate("/cart")}
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-[#eedfd5] bg-white/85 px-3.5 text-sm font-semibold text-[#695e56] shadow-sm transition hover:border-[#f2c6b3] hover:bg-white hover:text-[#d84628] sm:px-4"
+          >
+            <ArrowLeft size={16} /> <span>Back to cart</span>
+          </button>
+        </header>
+
+        <section className="relative mt-6 overflow-hidden rounded-[30px] border border-[#f1dfd4] bg-gradient-to-br from-white via-[#fffaf6] to-[#ffede2] p-5 shadow-[0_18px_45px_-38px_rgba(94,48,27,0.5)] sm:mt-8 sm:p-8 lg:p-9">
+          <div className="pointer-events-none absolute -right-10 -top-12 size-56 rounded-full border-[28px] border-white/35" />
+          <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#f1ddcf] bg-white/75 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.17em] text-[#bf6543]">
+                <Sparkles size={13} /> One last step
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-[#29231f] sm:text-4xl">Make it yours<span className="text-[#ff4d2d]">.</span></h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-[#796e66] sm:text-base">Confirm where to deliver, choose how to pay, and we’ll get your order started.</p>
+            </div>
+            <div className="flex w-fit items-center gap-3 rounded-2xl border border-white/90 bg-white/75 px-4 py-3 shadow-sm backdrop-blur-sm">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-[#fff0e7] text-[#f05235]"><MapPin size={19} /></span>
+              <span className="max-w-[230px]">
+                <span className="block text-[10px] font-bold uppercase tracking-[0.12em] text-[#a3978e]">Delivering to</span>
+                <span className="mt-0.5 block truncate text-sm font-bold text-[#403832]">{address || "Choose a delivery address"}</span>
+              </span>
             </div>
           </div>
         </section>
 
-        <section>
-          <h2 className="text-lg font-semibold mb-3 text-gray-800">
-            Payment Method
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div
-              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${paymentMethod === "cod" ? "border-[#ff4d2d] bg-orange-50 shadow" : "border-gray-200 hover:border-gray-300"}`}
-              onClick={() => setPaymentMethod("cod")}
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full         bg-green-100">
-                <MdDeliveryDining className="text-green-600 text-xl" />
-              </span>
-              <div>
-                <p className="font-medium text-gray-800">Cash On Delivery</p>
-                <p className="text-xs text-gray-500">
-                  Pay when your food arrives
-                </p>
-              </div>
-            </div>
-            <div
-              className={`flex items-center gap-3 rounded-xl border p-4 text-left transition ${paymentMethod === "online" ? "border-[#ff4d2d] bg-orange-50 shadow" : "border-gray-200 hover:border-gray-300"}`}
-              onClick={() => setPaymentMethod("online")}
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-purple-100">
-                <CiMobile1 className="text-purple-700 text-lg" />
-              </span>
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-                <FaCreditCard className="text-blue-700 text-lg" />
-              </span>
-              <div>
-                <p className="font-medium text-gray-800">
-                  UPI / Credit / Debit Card
-                </p>
-                <p className="text-xs text-gray-500">Pay Securely Online</p>
-              </div>
-            </div>
-          </div>
-        </section>
+        {cartItems?.length ? (
+          <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-8">
+            <div className="space-y-6">
+              <section className="overflow-hidden rounded-[26px] border border-[#f0e2d9] bg-white shadow-[0_12px_35px_-30px_rgba(75,39,23,0.4)]">
+                <div className="border-b border-[#f2e7e0] bg-gradient-to-r from-[#fff5ee] to-white px-5 py-4 sm:px-6">
+                  <div className="flex items-center gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-white text-[#e64b2e] shadow-sm"><MapPin size={19} /></span>
+                    <div>
+                      <h2 className="text-lg font-extrabold text-[#302923]">Delivery location</h2>
+                      <p className="mt-0.5 text-xs text-[#81766e]">Search an address or move the pin to your door.</p>
+                    </div>
+                  </div>
+                </div>
 
-        <section>
-          <h2 className="text-lg font-semibold mb-3 text-gray-800">
-            Order Summary
-          </h2>
-          <div className="rounded-xl border bg-gray-50 p-4 space-y-2">
-            {cartItems.map((item, index) => (
-              <div
-                key={index}
-                className="flex justify-between text-sm text-gray-700"
-              >
-                <span>
-                  {item.name} x {item.quantity}
-                </span>
-                <span>₹{item.price * item.quantity}</span>
-              </div>
-            ))}
-            <hr className="border-gray-200 my-2"></hr>
-            <div className="flex justify-between font-medium text-gray-800">
-              <span>Subtotal</span>
-              <span>₹{totalAmount}</span>
+                <div className="p-4 sm:p-6">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <label className="relative min-w-0 flex-1">
+                      <MapPin size={17} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[#e64b2e]" />
+                      <input
+                        type="text"
+                        placeholder="House number, street, neighborhood"
+                        aria-label="Enter your delivery address"
+                        className="h-12 w-full rounded-xl border border-[#eadfd8] bg-[#fffdfa] pl-10 pr-3.5 text-sm text-[#302923] outline-none transition placeholder:text-[#a3978e] focus:border-[#ff4d2d] focus:ring-4 focus:ring-[#ff4d2d]/10"
+                        value={addressInput || ""}
+                        onChange={(e) => setAddressInput(e.target.value)}
+                      />
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        aria-label="Search this address on the map"
+                        onClick={getLatlngByAddress}
+                        className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-[#ff4d2d] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#e94325] sm:flex-none"
+                      >
+                        <Search size={17} /><span>Find address</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={getCurrentLocation}
+                        className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-[#f0d9cc] bg-[#fff4ec] px-3.5 text-sm font-semibold text-[#b85738] transition hover:bg-[#ffeadf] sm:flex-none"
+                      >
+                        <LocateFixed size={17} /><span className="sm:hidden">Current location</span><span className="hidden sm:inline">Use current location</span>
+                      </button>
+                    </div>
+                  </div>
+                  {locationMessage && (
+                    <p role="status" className="mt-2.5 text-sm text-[#796e66]">{locationMessage}</p>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#fff8f3] px-3.5 py-2.5 text-xs text-[#81766e]">
+                    <span>Drag the map pin to fine-tune the delivery point.</span>
+                    <span className="shrink-0 rounded-full bg-white px-2.5 py-1 font-semibold text-[#b85738]">Map pin</span>
+                  </div>
+                  <div className="mt-3 h-56 overflow-hidden rounded-2xl border border-[#eadfd8] bg-[#f5ece6] sm:h-64">
+                    <MapContainer
+                      className="h-full w-full"
+                      center={[Number(location?.lat) || 20.5937, Number(location?.lon) || 78.9629]}
+                      zoom={location?.lat && location?.lon ? 15 : 5}
+                      scrollWheelZoom
+                    >
+                      <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                      />
+                      <RecenterMap location={location} />
+                      {location?.lat != null && location?.lon != null && (
+                        <Marker
+                          position={[Number(location.lat), Number(location.lon)]}
+                          draggable
+                          eventHandlers={{ dragend: onDragEnd }}
+                        />
+                      )}
+                    </MapContainer>
+                  </div>
+                </div>
+              </section>
+
+              <section className="rounded-[26px] border border-[#f0e2d9] bg-white p-4 shadow-[0_12px_35px_-30px_rgba(75,39,23,0.4)] sm:p-6">
+                <div className="mb-4 flex items-center gap-3">
+                  <span className="flex size-10 items-center justify-center rounded-xl bg-[#fff0e7] text-[#e64b2e]"><Wallet size={19} /></span>
+                  <div>
+                    <h2 className="text-lg font-extrabold text-[#302923]">Payment method</h2>
+                    <p className="mt-0.5 text-xs text-[#81766e]">Choose whichever works best for you.</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    aria-pressed={paymentMethod === "cod"}
+                    onClick={() => setPaymentMethod("cod")}
+                    className={`flex min-w-0 items-center gap-3 rounded-2xl border p-4 text-left transition ${paymentMethod === "cod" ? "border-[#ff4d2d]/60 bg-[#fff4ec] shadow-[0_8px_20px_-18px_rgba(255,77,45,0.8)]" : "border-[#eee4de] bg-white hover:border-[#f0c7b5] hover:bg-[#fffaf6]"}`}
+                  >
+                    <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${paymentMethod === "cod" ? "bg-white text-[#e64b2e]" : "bg-[#f5f2ee] text-[#756a62]"}`}><Bike size={20} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-[#302923]">Cash on delivery</span>
+                      <span className="mt-1 block text-xs text-[#81766e]">Pay when your food arrives</span>
+                    </span>
+                    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border ${paymentMethod === "cod" ? "border-[#ff4d2d] bg-[#ff4d2d] text-white" : "border-[#d9ccc3] text-transparent"}`}><Check size={12} /></span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={paymentMethod === "online"}
+                    onClick={() => setPaymentMethod("online")}
+                    className={`flex min-w-0 items-center gap-3 rounded-2xl border p-4 text-left transition ${paymentMethod === "online" ? "border-[#ff4d2d]/60 bg-[#fff4ec] shadow-[0_8px_20px_-18px_rgba(255,77,45,0.8)]" : "border-[#eee4de] bg-white hover:border-[#f0c7b5] hover:bg-[#fffaf6]"}`}
+                  >
+                    <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${paymentMethod === "online" ? "bg-white text-[#e64b2e]" : "bg-[#f5f2ee] text-[#756a62]"}`}><CreditCard size={20} /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold text-[#302923]">UPI or card</span>
+                      <span className="mt-1 block text-xs text-[#81766e]">Secure online payment</span>
+                    </span>
+                    <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border ${paymentMethod === "online" ? "border-[#ff4d2d] bg-[#ff4d2d] text-white" : "border-[#d9ccc3] text-transparent"}`}><Check size={12} /></span>
+                  </button>
+                </div>
+              </section>
             </div>
-            <div className="flex justify-between text-gray-700">
-              <span>Delivery Fee</span>
-              <span>{deliveryFee == 0 ? "Free" : `₹${deliveryFee}`}</span>
-            </div>
-            <div className="flex justify-between text-lg font-bold text-[#ff4d2d] pt-2">
-              <span>Total</span>
-              <span>₹{amountWithDeliveryFee}</span>
-            </div>
+
+            <aside className="lg:sticky lg:top-6">
+              <section className="overflow-hidden rounded-[26px] border border-[#f0dfd5] bg-white shadow-[0_14px_38px_-30px_rgba(75,39,23,0.45)]">
+                <div className="bg-gradient-to-r from-[#fff1e7] to-[#fffaf6] px-5 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-extrabold text-[#302923]">Order summary</h2>
+                      <p className="mt-0.5 text-xs text-[#887c73]">A quick look at your order</p>
+                    </div>
+                    <span className="flex size-10 items-center justify-center rounded-xl bg-white text-[#e64b2e] shadow-sm"><ShoppingBag size={18} /></span>
+                  </div>
+                </div>
+                <div className="space-y-3 p-5">
+                  <div className="max-h-48 space-y-3 overflow-y-auto pr-1">
+                    {cartItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3">
+                        <div className="relative size-12 shrink-0 overflow-hidden rounded-xl bg-[#fff2e9]">
+                          {item.image && <img src={item.image} alt="" className="size-full object-cover" />}
+                          <span className="absolute -right-0.5 -top-0.5 flex size-5 items-center justify-center rounded-full bg-[#302923] text-[10px] font-bold text-white">{item.quantity}</span>
+                        </div>
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold text-[#51473f]">{item.name}</span>
+                        <span className="shrink-0 text-sm font-bold text-[#302923]">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-dashed border-[#eadbd1]" />
+                  <div className="flex items-center justify-between text-sm text-[#756a62]">
+                    <span>Items subtotal</span><span className="font-semibold text-[#302923]">₹{subtotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-[#756a62]">
+                    <span>Delivery fee</span><span className="font-semibold text-[#302923]">{deliveryFee === 0 ? <span className="text-[#3c8a58]">Free</span> : `₹${deliveryFee.toFixed(2)}`}</span>
+                  </div>
+                  {deliveryFee === 0 && <div className="rounded-xl bg-[#edf7ef] px-3 py-2 text-xs font-semibold text-[#34794b]">You’ve unlocked free delivery.</div>}
+                  <div className="border-t border-[#f0e4dc]" />
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-bold text-[#51473f]">Total to pay</span>
+                    <strong className="text-2xl font-extrabold tracking-tight text-[#e64b2e]">₹{amountWithDeliveryFee.toFixed(2)}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handlePlaceOrder}
+                    className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#ff4d2d] px-5 text-sm font-bold text-white shadow-[0_8px_20px_-12px_rgba(255,77,45,0.8)] transition hover:-translate-y-0.5 hover:bg-[#e94325]"
+                  >
+                    {paymentMethod === "cod" ? "Place order" : "Pay & place order"}
+                    <ArrowRight size={17} />
+                  </button>
+                  <div className="flex items-center justify-center gap-2 pt-1 text-xs font-medium text-[#887c73]">
+                    <ShieldCheck size={15} className="text-[#5c9a70]" /> Secure payment and order details
+                  </div>
+                </div>
+              </section>
+            </aside>
           </div>
-        </section>
-        <button
-          className="w-full bg-[#ff4d2d] hover:bg-[#e64526] text-white py-3 rounded-xl font-semibold"
-          onClick={handlePlaceOrder}
-        >
-          {paymentMethod == "cod" ? "Place Order" : "Pay & Place Order"}
-        </button>
+        ) : (
+          <section className="mx-auto mt-7 flex max-w-2xl flex-col items-center rounded-[28px] border border-[#f0e2d9] bg-white px-6 py-12 text-center shadow-sm sm:py-16">
+            <span className="flex size-16 items-center justify-center rounded-[22px] bg-[#fff0e7] text-[#f05235]"><ShoppingBag size={28} /></span>
+            <h2 className="mt-5 text-2xl font-extrabold text-[#302923]">Your cart is empty</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-[#81766e]">Add a dish from a nearby restaurant before checking out.</p>
+            <button type="button" onClick={() => navigate("/")} className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-[#ff4d2d] px-6 text-sm font-bold text-white transition hover:bg-[#e94325]">Explore restaurants <ArrowRight size={17} /></button>
+          </section>
+        )}
       </div>
-    </div>
+    </main>
   );
 }
 

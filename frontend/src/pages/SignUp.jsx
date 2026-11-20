@@ -1,63 +1,61 @@
 import React, { useState } from "react";
-import { IoEyeSharp } from "react-icons/io5";
-import { FaRegEyeSlash } from "react-icons/fa";
+import { ArrowRight, Bike, Eye, EyeOff } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { serverUrl } from "../App";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { auth } from "../../firebase";
-import { ClipLoader } from "react-spinners";
 import { setUserData } from "../redux/userSlice";
 import { useDispatch } from "react-redux";
+import { serverUrl } from "../App";
+import { Button } from "../components/ui/button";
+import signupFood from "../assets/image1.jpg";
+
+const roles = [
+  { value: "user", label: "Food lover" },
+  { value: "owner", label: "Restaurant" },
+  { value: "deliveryBoy", label: "Delivery" },
+];
 
 const SignUp = () => {
-  const primaryColor = "#ff4d2d";
-  const hoverColor = "#e64323";
-  const bgColor = "#fff9f6";
-  const borderColor = "#ddd";
   const [showPassword, setShowPassword] = useState(false);
   const [role, setRole] = useState("user");
-  const navigate = useNavigate();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [mobile, setMobile] = useState("");
-  const [err,setErr] = useState("");
+  const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const handleSignUp = async () => {
+  const handleSignUp = async (event) => {
+    event.preventDefault();
     setLoading(true);
     try {
       const result = await axios.post(
         `${serverUrl}/api/auth/signup`,
-        {
-          fullName,
-          email,
-          password,
-          mobile,
-          role,
-        },
+        { fullName, email, password, mobile, role },
         { withCredentials: true },
       );
       dispatch(setUserData(result.data));
       setErr("");
-      setLoading(false);
     } catch (error) {
-      setErr(error?.response?.data?.message);
+      setErr(error?.response?.data?.message || "We couldn’t create your account. Please try again.");
+    } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleAuth = async () => {
     if (!mobile) {
-      setErr("Mobile number is required for Google Sign Up");
+      setErr("Add your mobile number before signing up with Google.");
       return;
     }
-    const provider = new GoogleAuthProvider();
-    const result = await signInWithPopup(auth, provider);
+
     try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
       const { data } = await axios.post(
         `${serverUrl}/api/auth/google-auth`,
         {
@@ -67,167 +65,197 @@ const SignUp = () => {
           role,
         },
         { withCredentials: true },
-      )
+      );
       dispatch(setUserData(data));
+      setErr("");
     } catch (error) {
-      console.log(error);
+      setErr(error?.response?.data?.message || "Google sign up didn’t finish. Please try again.");
     }
   };
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4 w-full"
-      style={{ backgroundColor: bgColor }}
-    >
-      <div
-        className={`bg-white rounded-xl shadow-lg w-full max-w-md p-8 border-[1px]`}
-        style={{ border: `1px solid ${borderColor}` }}
-      >
-        <h1
-          className={`text-3xl font-bold mb-2`}
-          style={{ color: primaryColor }}
-        >
-          SnapEats
-        </h1>
-        <p className="text-gray-600 mb-8">
-          Create your account to get started with Delicious food deliveries
-        </p>
+    <main className="min-h-screen bg-[#fff1e8] p-3 text-[#26221f] sm:p-5 lg:p-8">
+      <div className="mx-auto grid min-h-[calc(100vh-1.5rem)] w-full max-w-6xl overflow-hidden rounded-[1.75rem] border border-orange-100 bg-white shadow-[0_24px_80px_-44px_rgba(94,48,27,0.36)] sm:min-h-[calc(100vh-2.5rem)] sm:grid-cols-[0.82fr_1fr] sm:rounded-[2rem] lg:min-h-[calc(100vh-4rem)]">
+        <aside className="relative min-h-[210px] overflow-hidden bg-[#f2c6a8] sm:min-h-[740px]">
+          <img
+            src={signupFood}
+            alt="Freshly prepared samosas served with chutney"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#21150f]/85 via-[#21150f]/15 to-[#21150f]/10" />
+          <div className="relative flex h-full min-h-[210px] flex-col justify-between p-5 text-white sm:min-h-[740px] sm:p-7 lg:p-9">
+            <Link to="/" className="inline-flex w-fit items-center gap-2.5 rounded-full bg-white/15 px-3 py-2 backdrop-blur-md sm:hidden">
+              <span className="logo-smoke-mark flex size-8 items-center justify-center rounded-xl text-white">
+                <Bike size={18} strokeWidth={2.5} />
+              </span>
+              <span className="text-lg font-extrabold tracking-tight">SnapEats</span>
+            </Link>
 
-        {/* FullName */}
+            <div className="max-w-sm">
+              <span className="mb-3 inline-flex rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/90 backdrop-blur-sm sm:mb-4 sm:text-xs">
+                Good food is closer than you think
+              </span>
+              <h2 className="text-3xl font-black leading-[1.02] tracking-tight sm:text-4xl lg:text-5xl">
+                Make room for something delicious.
+              </h2>
+              <p className="mt-3 max-w-xs text-sm leading-6 text-white/80 sm:mt-4 sm:text-base">
+                Meet the neighborhood kitchens and fresh favorites you’ll want to come back to.
+              </p>
+            </div>
+          </div>
+        </aside>
 
-        <div className="mb-4">
-          <label
-            htmlFor="fullname"
-            className="block text-gray-700 font-medium mb-1"
-          >
-            Full Name
-          </label>
-          <input
-            type="text"
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500"
-            placeholder="Enter your Fullname"
-            style={{ border: `1px solid ${borderColor}` }}
-            onChange={(e) => setFullName(e.target.value)}
-            value={fullName} required
-          ></input>
-        </div>
+        <section className="bg-gradient-to-br from-[#fffdfb] via-[#fff8f3] to-[#ffefe5] flex items-center justify-center px-5 py-7 sm:px-7 sm:py-10 lg:px-12 lg:py-12">
+          <div className="w-full max-w-md">
+            <Link to="/" aria-label="SnapEats home" className="mb-7 hidden items-center gap-2.5 sm:inline-flex lg:mb-9">
+              <span className="logo-smoke-mark flex size-9 items-center justify-center rounded-xl text-white">
+                <Bike size={19} strokeWidth={2.5} />
+              </span>
+              <span className="logo-smoke text-xl font-extrabold tracking-tight">SnapEats</span>
+            </Link>
 
-        {/* Email */}
+            <div className="mb-6 sm:mb-7">
+              <p className="text-sm font-bold uppercase tracking-[0.14em] text-[#a35a38]">Join SnapEats</p>
+              <h1 className="mt-2 text-3xl font-black tracking-tight text-[#26221f] sm:text-4xl">Create your account</h1>
+              <p className="mt-2 text-sm leading-6 text-[#746b64] sm:text-base">
+                Sign up for fresh local favorites, delivered your way.
+              </p>
+            </div>
 
-        <div className="mb-4">
-          <label
-            htmlFor="email"
-            className="block text-gray-700 font-medium mb-1"
-          >
-            Email
-          </label>
-          <input
-            type="text"
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500"
-            placeholder="Enter your Email"
-            style={{ border: `1px solid ${borderColor}` }}
-            onChange={(e) => setEmail(e.target.value)}
-            value={email} required
-          ></input>
-        </div>
+            <form className="space-y-4" onSubmit={handleSignUp}>
+              <div>
+                <label htmlFor="signup-fullname" className="mb-1.5 block text-sm font-semibold text-[#433c37]">
+                  Full name
+                </label>
+                <input
+                  id="signup-fullname"
+                  autoComplete="name"
+                  type="text"
+                  placeholder="Your name"
+                  className="h-11 w-full rounded-xl border border-[#eadfd8] bg-[#fffdfb] px-3.5 text-sm outline-none transition placeholder:text-[#a39a93] focus:border-[#ff4d2d] focus:ring-4 focus:ring-[#ff4d2d]/10"
+                  value={fullName}
+                  onChange={(event) => setFullName(event.target.value)}
+                  required
+                />
+              </div>
 
-        {/* Mobile No. */}
+              <div className="grid grid-cols-1 gap-4 min-[520px]:grid-cols-2">
+                <div>
+                  <label htmlFor="signup-email" className="mb-1.5 block text-sm font-semibold text-[#433c37]">
+                    Email
+                  </label>
+                  <input
+                    id="signup-email"
+                    autoComplete="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    className="h-11 w-full rounded-xl border border-[#eadfd8] bg-[#fffdfb] px-3.5 text-sm outline-none transition placeholder:text-[#a39a93] focus:border-[#ff4d2d] focus:ring-4 focus:ring-[#ff4d2d]/10"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label htmlFor="signup-mobile" className="mb-1.5 block text-sm font-semibold text-[#433c37]">
+                    Mobile number
+                  </label>
+                  <input
+                    id="signup-mobile"
+                    autoComplete="tel"
+                    type="tel"
+                    placeholder="Your number"
+                    className="h-11 w-full rounded-xl border border-[#eadfd8] bg-[#fffdfb] px-3.5 text-sm outline-none transition placeholder:text-[#a39a93] focus:border-[#ff4d2d] focus:ring-4 focus:ring-[#ff4d2d]/10"
+                    value={mobile}
+                    onChange={(event) => setMobile(event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
 
-        <div className="mb-4">
-          <label
-            htmlFor="mobile"
-            className="block text-gray-700 font-medium mb-1"
-          >
-            Mobile{" "}
-          </label>
-          <input
-            type="text"
-            className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500"
-            placeholder="Enter your Mobile Number"
-            style={{ border: `1px solid ${borderColor}` }}
-            onChange={(e) => setMobile(e.target.value)}
-            value={mobile} required
-          ></input>
-        </div>
+              <div>
+                <label htmlFor="signup-password" className="mb-1.5 block text-sm font-semibold text-[#433c37]">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    id="signup-password"
+                    autoComplete="new-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Create a password"
+                    className="h-11 w-full rounded-xl border border-[#eadfd8] bg-[#fffdfb] px-3.5 pr-11 text-sm outline-none transition placeholder:text-[#a39a93] focus:border-[#ff4d2d] focus:ring-4 focus:ring-[#ff4d2d]/10"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                  />
+                  <button
+                    type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-[#827971] transition hover:text-[#26221f]"
+                    onClick={() => setShowPassword((visible) => !visible)}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
 
-        {/* Password */}
+              <fieldset>
+                <legend className="mb-1.5 block text-sm font-semibold text-[#433c37]">I’m joining as a</legend>
+                <div className="grid grid-cols-3 gap-2" role="radiogroup" aria-label="Choose your account type">
+                  {roles.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={role === item.value}
+                      onClick={() => setRole(item.value)}
+                      className={`h-10 rounded-xl border px-2 text-xs font-semibold transition sm:text-sm ${
+                        role === item.value
+                          ? "border-[#ff4d2d] bg-[#fff0e7] text-[#d83e22]"
+                          : "border-[#eadfd8] bg-white text-[#746b64] hover:bg-[#fff9f6]"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
-        <div className="mb-4">
-          <label
-            htmlFor="password"
-            className="block text-gray-700 font-medium mb-1"
-          >
-            Password
-          </label>
-          <div className="relative">
-            <input
-              type={`${showPassword ? "text" : "password"}`}
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:border-orange-500"
-              placeholder="Enter your Password"
-              style={{ border: `1px solid ${borderColor}` }}
-              onChange={(e) => setPassword(e.target.value)}
-              value={password} required
-            ></input>
+              {err && (
+                <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+                  {err}
+                </p>
+              )}
+
+              <Button type="submit" variant="destructive" size="lg" className="h-11 w-full rounded-xl px-5" loading={loading}>
+                Create account <ArrowRight size={16} />
+              </Button>
+            </form>
+
+            <div className="my-4 flex items-center gap-3 text-xs font-medium text-[#a39a93] sm:my-5">
+              <span className="h-px flex-1 bg-[#eee4de]" />
+              or continue with
+              <span className="h-px flex-1 bg-[#eee4de]" />
+            </div>
+
             <button
               type="button"
-              className="absolute right-3 top-[14px] cursor-pointer text-gray-500"
-              onClick={() => setShowPassword((prev) => !prev)}
+              className="flex h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-[#eadfd8] bg-white text-sm font-semibold text-[#433c37] transition hover:bg-[#fff9f6]"
+              onClick={handleGoogleAuth}
             >
-              {!showPassword ? <IoEyeSharp /> : <FaRegEyeSlash />}
+              <FcGoogle size={19} />
+              Sign up with Google
             </button>
+
+            <p className="mt-5 text-center text-sm text-[#746b64]">
+              Already have an account?{" "}
+              <Link to="/signin" className="font-bold text-[#e94325] underline-offset-4 hover:underline">
+                Sign in
+              </Link>
+            </p>
           </div>
-        </div>
-
-        {/* Role */}
-
-        <div className="mb-4">
-          <label
-            htmlFor="role"
-            className="block text-gray-700 font-medium mb-1"
-          >
-            Role
-          </label>
-          <div className="flex gap-2">
-            {["user", "owner", "deliveryBoy"].map((r) => (
-              <button
-                type="button"
-                className="flex-1 border rounded-lg px-3 py-2 text-center font-medium transition-color cursor-pointer"
-                onClick={() => setRole(r)}
-                style={
-                  role == r
-                    ? { backgroundColor: primaryColor, color: "white" }
-                    : { border: borderColor, color: primaryColor }
-                }
-              >
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-        <button
-          className="w-full mt-4 font-semibold flex items-center justify-center gap-2 rounded-lg px-4 py-2 transition duration-200 bg-[#ff4d2d] hover:bg-[#e64323] text-white cursor-pointer"
-          onClick={handleSignUp} disabled={loading}>
-          {loading ? <ClipLoader size={20} color="white"/> : "Sign Up"}
-        </button>
-        <p className="text-red-500 text-center my-[10px]">{err}</p>
-
-        <button
-          type="button"
-          className="w-full mt-4 flex items-center justify-center gap-2 border rounded-lg px-4 py-2 transition duration-200 border-gray-400 hover:bg-gray-200"
-          onClick={handleGoogleAuth}
-        >
-          <FcGoogle style={20} />
-          <span>Sign up with Google</span>
-        </button>
-        <p
-          className="text-center mt-3 cursor-pointer"
-          onClick={() => navigate("/signin")}
-        >
-          Already have an account ?{" "}
-          <span className="text-[#ff4d2d]">Sign In</span>
-        </p>
+        </section>
       </div>
-    </div>
+    </main>
   );
 };
 

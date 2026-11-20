@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, Bike, Clock3, MapPin, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
 import heroFood from "../assets/image1.jpg";
 import burgerFood from "../assets/image5.jpg";
 import pizzaFood from "../assets/image4.avif";
@@ -12,11 +13,11 @@ const Welcome = () => {
     <main className="min-h-screen overflow-hidden bg-[#fff9f6] text-[#26221f]">
       <header className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8 lg:px-12">
         <a href="/" aria-label="SnapEats home" className="flex items-center gap-2.5">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#ff4d2d] text-white shadow-lg shadow-orange-200">
+          <span className="logo-smoke-mark flex h-10 w-10 items-center justify-center rounded-2xl text-white shadow-lg shadow-orange-200">
             <Bike size={22} strokeWidth={2.5} />
           </span>
-          <span className="text-[1.55rem] font-extrabold tracking-tight text-[#26221f]">
-            Snap<span className="text-[#ff4d2d]">Eats</span>
+          <span className="logo-smoke text-[1.55rem] font-extrabold tracking-tight">
+            SnapEats
           </span>
         </a>
 
@@ -28,7 +29,9 @@ const Welcome = () => {
 
         <div className="flex items-center gap-2 sm:gap-3">
           <button className="rounded-full px-3 py-2 text-sm font-bold text-[#433c37] transition hover:bg-orange-50 sm:px-4" onClick={() => navigate("/signin")}>Log in</button>
-          <button className="rounded-full bg-[#ff4d2d] px-4 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-[#e94325] sm:px-5" onClick={() => navigate("/signup")}>Sign up</button>
+          <Button variant="destructive" onClick={() => navigate("/signup")}>
+            Sign up
+          </Button>
         </div>
       </header>
 
@@ -53,9 +56,15 @@ const Welcome = () => {
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <button onClick={() => navigate("/signup")} className="group inline-flex items-center justify-center gap-3 rounded-full bg-[#ff4d2d] px-7 py-4 font-bold text-white shadow-lg shadow-orange-200 transition hover:-translate-y-0.5 hover:bg-[#e94325]">
-              Find your next favorite <ArrowRight size={18} className="transition group-hover:translate-x-1" />
-            </button>
+            <Button
+              variant="destructive"
+              size="xl"
+              className="group gap-3"
+              rightIcon={<ArrowRight size={18} className="transition group-hover:translate-x-1" />}
+              onClick={() => navigate("/signup")}
+            >
+              Find your next favorite
+            </Button>
             <a href="#discover" className="inline-flex items-center justify-center gap-2 rounded-full px-5 py-4 text-sm font-bold text-[#625b55] transition hover:bg-white">
               See what’s cooking <ArrowDown size={16} />
             </a>
@@ -118,7 +127,7 @@ const Welcome = () => {
       <footer id="footer" className="bg-[#26221f] text-white">
         <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-9 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
           <div>
-            <a href="/" className="text-2xl font-extrabold tracking-tight">Snap<span className="text-[#ff795f]">Eats</span></a>
+            <a href="/" className="logo-smoke text-2xl font-extrabold tracking-tight">SnapEats</a>
             <p className="mt-2 max-w-sm text-sm leading-6 text-white/60">A little closer to your next favorite meal.</p>
           </div>
           <div className="flex flex-wrap gap-x-7 gap-y-3 text-sm font-semibold text-white/75">

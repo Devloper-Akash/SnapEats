@@ -93,7 +93,7 @@ const DeliveryBoyTracking = ({ data }) => {
             <Popup>Customer</Popup>
           </Marker>
         )}
-        {path.length === 2 && <Polyline positions={path} color="blue" weight={3} />}
+        {path.length === 2 && <Polyline positions={path} color="#ff4d2d" weight={4} opacity={0.9} />}
       </MapContainer>
     </div>
   );

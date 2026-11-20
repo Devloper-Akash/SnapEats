@@ -148,6 +148,39 @@
   animation: snap-eats-float 5.2s ease-in-out infinite;
 }
 
+.logo-smoke {
+  color: transparent;
+  background-image:
+    radial-gradient(ellipse at 28% 30%, rgb(255 77 45 / 90%) 0%, transparent 48%),
+    radial-gradient(ellipse at 76% 72%, rgb(38 34 31 / 92%) 0%, transparent 50%),
+    linear-gradient(180deg, #26221f 4%, #ff4d2d 96%);
+  background-size: 180% 230%, 210% 240%, 100% 100%;
+  background-position: 0% 0%, 100% 100%, center;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: snap-logo-smoke 7s ease-in-out infinite alternate;
+}
+
+.logo-smoke-mark {
+  background-color: #ff4d2d;
+  background-image:
+    radial-gradient(ellipse at 28% 30%, rgb(255 77 45 / 90%) 0%, transparent 48%),
+    radial-gradient(ellipse at 76% 72%, rgb(38 34 31 / 92%) 0%, transparent 50%),
+    linear-gradient(180deg, #26221f 4%, #ff4d2d 96%);
+  background-size: 180% 230%, 210% 240%, 100% 100%;
+  background-position: 0% 0%, 100% 100%, center;
+  animation: snap-logo-smoke 7s ease-in-out infinite alternate;
+}
+
+@keyframes snap-logo-smoke {
+  0% { background-position: 0% 0%, 100% 100%, center; }
+  50% { background-position: 100% 90%, 0% 10%, center; }
+  100% { background-position: 20% 75%, 85% 25%, center; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .food-float { animation: none; }
+  .logo-smoke,
+  .logo-smoke-mark { animation: none; }
 }
