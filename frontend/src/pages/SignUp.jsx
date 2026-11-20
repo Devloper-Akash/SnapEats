@@ -69,7 +69,11 @@ const SignUp = () => {
       dispatch(setUserData(data));
       setErr("");
     } catch (error) {
-      setErr(error?.response?.data?.message || "Google sign up didn’t finish. Please try again.");
+      if (error?.code === "auth/unauthorized-domain") {
+        setErr("This domain is not authorized for Google Sign-In in Firebase Console. Please add snapeats-fjjn.onrender.com to Firebase Authentication -> Settings -> Authorized Domains.");
+      } else {
+        setErr(error?.response?.data?.message || error?.message || "Google sign up didn’t finish. Please try again.");
+      }
     }
   };
 

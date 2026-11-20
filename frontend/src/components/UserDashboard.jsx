@@ -53,25 +53,31 @@ const UserDashboard = () => {
   }
 
 
-  useEffect(()=>{
-    if(cateScrollRef.current){
-      updateButton(cateScrollRef,setShowCateLeftButton,setShowCateRightButton);
-      updateButton(shopScrollRef,setShowShopLeftButton,setShowShopRightButton);
-      cateScrollRef.current.addEventListener('scroll',()=>{
-        updateButton(cateScrollRef,setShowCateLeftButton,setShowCateRightButton);
-      });
-      shopScrollRef.current.addEventListener('scroll',()=>{
-        updateButton(shopScrollRef,setShowShopLeftButton,setShowShopRightButton);
-      });
+  useEffect(() => {
+    const cateEl = cateScrollRef.current;
+    const shopEl = shopScrollRef.current;
+
+    const handleCateScroll = () => {
+      updateButton(cateScrollRef, setShowCateLeftButton, setShowCateRightButton);
+    };
+    const handleShopScroll = () => {
+      updateButton(shopScrollRef, setShowShopLeftButton, setShowShopRightButton);
+    };
+
+    if (cateEl) {
+      updateButton(cateScrollRef, setShowCateLeftButton, setShowCateRightButton);
+      cateEl.addEventListener('scroll', handleCateScroll);
+    }
+    if (shopEl) {
+      updateButton(shopScrollRef, setShowShopLeftButton, setShowShopRightButton);
+      shopEl.addEventListener('scroll', handleShopScroll);
     }
 
-    return()=>{cateScrollRef?.current?.removeEventListener('scroll',()=>{
-      updateButton(cateScrollRef,setShowCateLeftButton,setShowCateRightButton);
-    });
-    shopScrollRef?.current?.removeEventListener('scroll',()=>{
-      updateButton(shopScrollRef,setShowShopLeftButton,setShowShopRightButton);
-    })};
-  },[categories]);
+    return () => {
+      cateEl?.removeEventListener('scroll', handleCateScroll);
+      shopEl?.removeEventListener('scroll', handleShopScroll);
+    };
+  }, [categories, shopsInMyCity]);
 
   return (
     <div className='w-full max-w-6xl flex flex-col gap-5 items-start p-[10px]'>

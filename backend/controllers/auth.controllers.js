@@ -157,17 +157,14 @@ export const googleAuth = async (req, res) => {
             return res.status(400).json({ message: "Email is required." });
         }
 
-        let user = await User.findOne({ email });
+        const normalizedEmail = email.trim().toLowerCase();
+        let user = await User.findOne({ email: normalizedEmail });
         if (!user) {
-            if (!fullName || !mobile || !role) {
-                return res.status(400).json({ message: "fullName, mobile and role are required for new Google users." });
-            }
-
             user = await User.create({
-                fullName,
-                email,
-                mobile,
-                role
+                fullName: fullName?.trim() || normalizedEmail.split("@")[0],
+                email: normalizedEmail,
+                mobile: mobile?.trim() || "Not Provided",
+                role: role || "user"
             });
         }
 
@@ -177,6 +174,6 @@ export const googleAuth = async (req, res) => {
         return res.status(200).json(user);
 
     } catch (error) {
-        return res.status(500).json({ message: `Google Auth error ${error}` });
+        return res.status(500).json({ message: `Google Auth error ${error?.message || error}` });
     }
 }
