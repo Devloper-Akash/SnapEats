@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#fff9f6" />
+    <title>SnapEats Admin</title>
+  </head>
+  <body>
+    <div id="admin-root"></div>
+    <script>
+      if (window.location.protocol === "file:") {
+        document.getElementById("admin-root").innerHTML = `
+          <main style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#fff9f6;color:#352c27;font-family:Arial,sans-serif;text-align:center">
+            <section style="max-width:440px;padding:32px;border:1px solid #f1e6df;border-radius:20px;background:#fff;box-shadow:0 18px 55px #623c2512">
+              <p style="margin:0;color:#e45b3b;font-size:12px;font-weight:bold;letter-spacing:.12em">SNAPEATS ADMIN</p>
+              <h1 style="margin:14px 0 8px;font-size:25px">Start the admin page with Vite</h1>
+              <p style="color:#81766e;font-size:14px;line-height:1.6">This page needs a local web server. From the <b>frontend</b> folder, run:</p>
+              <code style="display:inline-block;padding:11px 15px;border-radius:9px;background:#fff1e9;color:#ba4d32;font-size:14px">npm run dev:admin</code>
+              <p style="margin:18px 0 0;color:#96877e;font-size:12px">Then open <b>http://localhost:5173/admin.html</b>.</p>
+            </section>
+          </main>`;
+      }
+    </script>
+    <script type="module" src="/src/admin/main.jsx"></script>
+  </body>
+</html>

@@ -5,7 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "nodemon index.js"
+    "dev": "nodemon index.js",
+    "seed:superadmin": "node scripts/seed-superadmin.js"
   },
   "author": "Akash",
   "license": "ISC",

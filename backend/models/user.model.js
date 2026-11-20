@@ -19,8 +19,17 @@ const userSchema = new mongoose.Schema({
     },
     role:{
         type:String,
-        enum:["user","owner","deliveryBoy"],
+        enum:["user","owner","deliveryBoy","admin"],
         required:true
+    },
+    adminRole:{
+        type:String,
+        enum:["superadmin","manager","support","finance"],
+        default:undefined
+    },
+    isBlocked:{
+        type:Boolean,
+        default:false
     },
     resetOtp:{
         type:String,

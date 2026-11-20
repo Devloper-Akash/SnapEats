@@ -26,6 +26,23 @@ const shopSchema = new mongoose.Schema({
         type:String,
         required:true
     },
+    approvalStatus:{
+        type:String,
+        enum:["pending","approved","rejected"],
+        default:"pending",
+        index:true
+    },
+    commissionRate:{
+        type:Number,
+        min:0,
+        max:100,
+        default:10
+    },
+    isSuspended:{
+        type:Boolean,
+        default:false
+    },
+    rejectionReason:String,
     items:[{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Item"

@@ -15,7 +15,8 @@ const cookieOptions = () => {
 
 export const signUp = async (req, res) => {
     try {
-        const { fullName, email, password, mobile, role } = req.body;
+        const { fullName, email, password, mobile } = req.body;
+        const role = req.body.role === "owner" ? "owner" : req.body.role === "deliveryBoy" ? "deliveryBoy" : "user";
         const normalizedEmail = email?.trim().toLowerCase();
         let user = await User.findOne({ email: normalizedEmail });
         if (user) {
@@ -60,6 +61,9 @@ export const signIn = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return res.status(400).json({ message: "Incorrect Password" });
+        }
+        if (user.isBlocked) {
+            return res.status(403).json({ message: "This account has been disabled. Contact support for help." });
         }
 
         const token = await genToken(user._id);
@@ -151,7 +155,8 @@ export const resetPassword = async (req, res) => {
 
 export const googleAuth = async (req, res) => {
     try {
-        const { fullName, email, mobile, role } = req.body;
+        const { fullName, email, mobile } = req.body;
+        const role = ["owner", "deliveryBoy"].includes(req.body.role) ? req.body.role : "user";
 
         if (!email) {
             return res.status(400).json({ message: "Email is required." });
@@ -164,7 +169,7 @@ export const googleAuth = async (req, res) => {
                 fullName: fullName?.trim() || normalizedEmail.split("@")[0],
                 email: normalizedEmail,
                 mobile: mobile?.trim() || "Not Provided",
-                role: role || "user"
+                role
             });
         }
 

@@ -9,6 +9,8 @@ import userRouter from "./routes/user.routes.js";
 import shopRouter from "./routes/shop.routes.js";
 import itemRouter from "./routes/item.routes.js";
 import orderRouter from "./routes/order.routes.js";
+import adminRouter from "./routes/admin.routes.js";
+import adminAuthRouter from "./routes/adminAuth.routes.js";
 import http from "http";
 import { Server } from "socket.io";
 import { socketHandler } from "./socket.js";
@@ -52,6 +54,8 @@ app.use("/api/user", userRouter);
 app.use("/api/shop", shopRouter);
 app.use("/api/item", itemRouter);
 app.use("/api/order", orderRouter);
+app.use("/api/admin/session", adminAuthRouter);
+app.use("/api/admin", adminRouter);
 
 socketHandler(io);
 const startServer = async () => {
