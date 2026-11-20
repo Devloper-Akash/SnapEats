@@ -56,6 +56,7 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
   // 2. Try Brevo HTTPS API (Port 443 - sends to ANY recipient without domain verification!)
   const brevoApiKey = process.env.BREVO_API_KEY?.trim() || process.env.SENDINBLUE_API_KEY?.trim();
   if (brevoApiKey) {
+    const senderEmail = (process.env.BREVO_SENDER_EMAIL || "halderak294@gmail.com").trim();
     try {
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
@@ -65,7 +66,7 @@ const sendMailViaHttpOrSmtp = async ({ to, subject, html }) => {
           Accept: "application/json",
         },
         body: JSON.stringify({
-          sender: { name: "SnapEats", email: emailUser },
+          sender: { name: "SnapEats", email: senderEmail },
           to: [{ email: toEmail }],
           subject,
           htmlContent: html,
