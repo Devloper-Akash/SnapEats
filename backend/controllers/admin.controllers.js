@@ -78,8 +78,17 @@ export const getAdminShops = async (req, res) => {
       } else Object.assign(filter, searchFilter);
     }
     const shops = Shop.find(filter).sort({ createdAt: -1 }).skip((pageNumber - 1) * pageSize).limit(pageSize).populate("owner", "fullName email mobile").lean();
-    const [items, total] = await Promise.all([shops, Shop.countDocuments(filter)]);
-    return res.json({ shops: items, pagination: { page: pageNumber, limit: pageSize, total, pages: Math.ceil(total / pageSize) } });
+    const [items, total, counts] = await Promise.all([
+      shops,
+      Shop.countDocuments(filter),
+      Promise.all([
+        Shop.countDocuments({ $or: [{ approvalStatus: "pending" }, { approvalStatus: { $exists: false } }] }),
+        Shop.countDocuments({ approvalStatus: "approved" }),
+        Shop.countDocuments(),
+        Shop.countDocuments({ isSuspended: true }),
+      ]),
+    ]);
+    return res.json({ shops: items, counts: { pending: counts[0], approved: counts[1], all: counts[2], suspended: counts[3] }, pagination: { page: pageNumber, limit: pageSize, total, pages: Math.ceil(total / pageSize) } });
   } catch (error) {
     console.error("Admin shops error:", error);
     return res.status(500).json({ message: "Unable to load shops." });

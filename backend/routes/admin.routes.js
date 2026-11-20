@@ -1,6 +1,7 @@
 import express from "express";
 import requireAdmin from "../middlewares/requireAdmin.js";
 import { getAdminDashboard, getAdminShops, updateAdminShop } from "../controllers/admin.controllers.js";
+import { createAdminCoupon, disableAdminCoupon, getAdminCoupons, updateAdminCoupon } from "../controllers/coupon.controllers.js";
 
 const adminRouter = express.Router();
 
@@ -13,5 +14,9 @@ adminRouter.get("/me", (req, res) => {
 adminRouter.get("/dashboard", getAdminDashboard);
 adminRouter.get("/shops", getAdminShops);
 adminRouter.patch("/shops/:shopId", updateAdminShop);
+adminRouter.get("/coupons", getAdminCoupons);
+adminRouter.post("/coupons", createAdminCoupon);
+adminRouter.patch("/coupons/:couponId", updateAdminCoupon);
+adminRouter.delete("/coupons/:couponId", disableAdminCoupon);
 
 export default adminRouter;

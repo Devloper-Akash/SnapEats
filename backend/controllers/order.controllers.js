@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { sendDeliveryOtpMail } from "../utils/mail.js";
 import Razorpay from "razorpay";
 import dotenv from "dotenv";
+import { CouponError, quoteCoupon, reserveCouponUse } from "../services/coupon.service.js";
 
 dotenv.config();
 
@@ -29,7 +30,7 @@ const formatOwnerOrder = (order, ownerId) => ({
 
 export const placeOrder = async (req, res) => {
   try {
-    const { cartItems, paymentMethod, deliveryAddress, totalAmount } = req.body;
+    const { cartItems, paymentMethod, deliveryAddress, totalAmount, couponCode } = req.body;
     if (!cartItems?.length) {
       return res.status(400).json({ message: "Cart is Empty" });
     }
@@ -43,9 +44,21 @@ export const placeOrder = async (req, res) => {
         .json({ message: "Send Complete Delivery Address" });
     }
 
+    let couponQuote = null;
+    let itemsForOrder = cartItems;
+    if (couponCode) {
+      try {
+        couponQuote = await quoteCoupon({ userId: req.userId, code: couponCode, cartItems });
+        itemsForOrder = couponQuote.items;
+      } catch (error) {
+        if (error instanceof CouponError) return res.status(error.status).json({ message: error.message });
+        throw error;
+      }
+    }
+
     const groupItemsByShop = {};
 
-    cartItems.forEach((item) => {
+    itemsForOrder.forEach((item) => {
       const shopId = item.shop;
       if (!groupItemsByShop[shopId]) {
         groupItemsByShop[shopId] = [];
@@ -78,9 +91,18 @@ export const placeOrder = async (req, res) => {
       }),
     );
 
+    const finalTotal = couponQuote ? couponQuote.totalAmount : totalAmount;
+    const couponDetails = couponQuote ? {
+      couponId: couponQuote.coupon._id,
+      code: couponQuote.coupon.code,
+      discountAmount: couponQuote.discountAmount,
+      deliverySavings: couponQuote.deliverySavings,
+      totalSavings: couponQuote.totalSavings,
+    } : undefined;
+
     if (paymentMethod === "online") {
       const razorOrder = await instance.orders.create({
-        amount: Math.round(totalAmount * 100),
+        amount: Math.round(finalTotal * 100),
         currency: "INR",
         receipt: `receipt_${Date.now()}`,
       });
@@ -89,11 +111,20 @@ export const placeOrder = async (req, res) => {
         user: req.userId,
         paymentMethod,
         deliveryAddress,
-        totalAmount,
+        totalAmount: finalTotal,
         shopOrders,
+        ...(couponDetails && { coupon: couponDetails }),
         razorpayOrderId: razorOrder.id,
         payment: false,
       });
+
+      if (couponQuote) {
+        const reserved = await reserveCouponUse({ coupon: couponQuote.coupon, userId: req.userId, orderId: order._id });
+        if (!reserved) {
+          await Order.deleteOne({ _id: order._id });
+          return res.status(409).json({ message: "This offer was just used up. Please remove it and try again." });
+        }
+      }
 
       return res.status(201).json({
         razorOrder,
@@ -105,9 +136,18 @@ export const placeOrder = async (req, res) => {
       user: req.userId,
       paymentMethod,
       deliveryAddress,
-      totalAmount,
+      totalAmount: finalTotal,
       shopOrders,
+      ...(couponDetails && { coupon: couponDetails }),
     });
+
+    if (couponQuote) {
+      const reserved = await reserveCouponUse({ coupon: couponQuote.coupon, userId: req.userId, orderId: order._id });
+      if (!reserved) {
+        await Order.deleteOne({ _id: order._id });
+        return res.status(409).json({ message: "This offer was just used up. Please remove it and try again." });
+      }
+    }
 
     await order.populate("shopOrders.shopOrderItems.item", "name image price");
     await order.populate("shopOrders.shop", "name");

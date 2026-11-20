@@ -2,7 +2,7 @@
 
 ## Open the admin page locally
 
-Run `npm run dev:admin` from the `frontend` directory. Vite will serve the app and open `http://localhost:5173/admin.html`. During local development, the admin page connects to `http://localhost:5000`; if your backend uses another address, set `VITE_ADMIN_SERVER_URL` in the frontend environment before starting Vite.
+Run `npm run dev:admin` from the `frontend` directory. Vite will serve the app and open `http://localhost:5173/admin.html`. During local development, the admin page connects to `http://localhost:8000` (the backend’s configured local port); if your backend uses another address, set `VITE_ADMIN_SERVER_URL` in the frontend environment before starting Vite.
 
 Do not open `admin.html` from File Explorer as a `file://` page. The admin UI is a React module app and needs to be served by Vite (locally) or by your deployed static site. In production, set `VITE_ADMIN_SERVER_URL` to the deployed backend before building, deploy the `dist` folder, and open `/admin.html` on the site URL.
 

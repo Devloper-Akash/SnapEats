@@ -31,10 +31,43 @@ function CheckOut() {
   const [addressInput, setAddressInput] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [locationMessage, setLocationMessage] = useState("");
+  const [couponInput, setCouponInput] = useState("");
+  const [couponQuote, setCouponQuote] = useState(null);
+  const [couponMessage, setCouponMessage] = useState("");
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [orderError, setOrderError] = useState("");
 
-  const deliveryFee = totalAmount > 500 ? 0 : 40;
-  const amountWithDeliveryFee = totalAmount + deliveryFee;
   const subtotal = Number(totalAmount || 0);
+  const cartKey = cartItems.map((item) => `${item.id}:${item.quantity}`).sort().join("|");
+  const appliedCoupon = couponQuote?.cartKey === cartKey ? couponQuote : null;
+  const deliveryFee = appliedCoupon?.deliveryFee ?? (subtotal > 500 ? 0 : 40);
+  const amountWithDeliveryFee = appliedCoupon?.totalAmount ?? subtotal + deliveryFee;
+
+  const applyCoupon = async (code = couponInput) => {
+    if (!String(code || "").trim()) {
+      setCouponMessage("Enter an offer code first.");
+      return;
+    }
+    setCouponBusy(true);
+    setCouponMessage("");
+    try {
+      const result = await axios.post(`${serverUrl}/api/coupon/validate`, { code, cartItems }, { withCredentials: true });
+      setCouponQuote({ ...result.data, cartKey });
+      setCouponInput(result.data.coupon.code);
+      setCouponMessage(`${result.data.coupon.code} applied — you save ₹${Number(result.data.totalSavings).toFixed(2)}.`);
+    } catch (error) {
+      setCouponQuote(null);
+      setCouponMessage(error.response?.data?.message || "Could not check this offer. Try again.");
+    } finally {
+      setCouponBusy(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setCouponQuote(null);
+    setCouponInput("");
+    setCouponMessage("Offer removed.");
+  };
 
   const apiKey = import.meta.env.VITE_GEOAPIKEY;
   const navigate = useNavigate();
@@ -126,6 +159,7 @@ function CheckOut() {
   };
 
   const handlePlaceOrder = async () => {
+    setOrderError("");
     try {
       const result = await axios.post(
         `${serverUrl}/api/order/place-order`,
@@ -138,6 +172,7 @@ function CheckOut() {
           },
           totalAmount: amountWithDeliveryFee,
           cartItems,
+          couponCode: appliedCoupon?.coupon.code,
         },
         { withCredentials: true },
       );
@@ -152,6 +187,7 @@ function CheckOut() {
       }
     } catch (error) {
       console.log(error.response?.data || error.message);
+      setOrderError(error.response?.data?.message || "Your order could not be placed. Please try again.");
     }
   };
 
@@ -218,6 +254,7 @@ function CheckOut() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAddressInput(address);
   }, [address]);
 
@@ -412,6 +449,12 @@ function CheckOut() {
                     <span>Delivery fee</span><span className="font-semibold text-[#302923]">{deliveryFee === 0 ? <span className="text-[#3c8a58]">Free</span> : `₹${deliveryFee.toFixed(2)}`}</span>
                   </div>
                   {deliveryFee === 0 && <div className="rounded-xl bg-[#edf7ef] px-3 py-2 text-xs font-semibold text-[#34794b]">You’ve unlocked free delivery.</div>}
+                  <div className="rounded-2xl border border-[#f0e2d9] bg-[#fffaf6] p-3.5">
+                    <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#51473f]">Have an offer code?</span>{appliedCoupon && <button type="button" onClick={removeCoupon} className="text-[11px] font-bold text-[#c25b40]">Remove</button>}</div>
+                    {appliedCoupon ? <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2"><span className="font-extrabold tracking-wide text-[#c65336]">{appliedCoupon.coupon.code}</span><span className="text-xs font-bold text-[#3c8a58]">−₹{Number(appliedCoupon.totalSavings).toFixed(2)}</span></div> : <div className="flex gap-2"><input aria-label="Offer code" value={couponInput} onChange={(event) => setCouponInput(event.target.value.toUpperCase())} onKeyDown={(event) => { if (event.key === "Enter") applyCoupon(); }} placeholder="Enter code" className="h-10 min-w-0 flex-1 rounded-xl border border-[#eadfd8] bg-white px-3 text-sm font-bold uppercase tracking-wide text-[#51473f] outline-none placeholder:font-medium placeholder:normal-case placeholder:tracking-normal focus:border-[#e99070]" /><button type="button" disabled={couponBusy} onClick={() => applyCoupon()} className="h-10 rounded-xl bg-[#34231b] px-4 text-xs font-bold text-white transition hover:bg-[#553526] disabled:opacity-60">{couponBusy ? "Checking…" : "Apply"}</button></div>}
+                    {(couponMessage || (couponQuote && !appliedCoupon)) && <p role="status" className={`mt-2 text-[11px] leading-4 ${appliedCoupon ? "text-[#3c8a58]" : "text-[#a85a43]"}`}>{couponQuote && !appliedCoupon ? "Your cart changed. Apply the offer again." : couponMessage}</p>}
+                  </div>
+                  {appliedCoupon && Number(appliedCoupon.discountAmount) > 0 && <div className="flex items-center justify-between text-sm text-[#3c8a58]"><span>Offer discount</span><span className="font-bold">−₹{Number(appliedCoupon.discountAmount).toFixed(2)}</span></div>}
                   <div className="border-t border-[#f0e4dc]" />
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm font-bold text-[#51473f]">Total to pay</span>
@@ -425,6 +468,7 @@ function CheckOut() {
                     {paymentMethod === "cod" ? "Place order" : "Pay & place order"}
                     <ArrowRight size={17} />
                   </button>
+                  {orderError && <p role="alert" className="rounded-xl bg-[#fff1ed] px-3 py-2 text-xs text-[#b24d39]">{orderError}</p>}
                   <div className="flex items-center justify-center gap-2 pt-1 text-xs font-medium text-[#887c73]">
                     <ShieldCheck size={15} className="text-[#5c9a70]" /> Secure payment and order details
                   </div>

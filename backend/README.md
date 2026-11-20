@@ -22,6 +22,16 @@ Current admin endpoints:
 - `GET /api/admin/dashboard` — platform metrics and dashboard lists.
 - `GET /api/admin/shops?status=pending&search=&page=1&limit=10` — searchable, paginated shop queue.
 - `PATCH /api/admin/shops/:shopId` — approval, suspension, or commission updates.
+- `GET /api/admin/coupons` — list platform offers.
+- `POST /api/admin/coupons` / `PATCH /api/admin/coupons/:couponId` — create or update an offer.
+- `DELETE /api/admin/coupons/:couponId` — turn an offer off (keeps redemption history).
+
+Customer offer endpoints:
+
+- `GET /api/coupon/active` — list active, in-date offers for the home page.
+- `POST /api/coupon/validate` — validate a coupon and calculate the customer’s checkout total.
+
+Checkout rechecks a supplied coupon on the server and calculates the total from current database item prices. It tracks per-customer and total use limits and records redemptions with orders. Admin-created coupons appear on both the signed-out landing page and signed-in customer home page, and customers can enter the code at checkout.
 
 Shop updates are recorded in the `AdminAudit` collection. Shop commission defaults to 10% for older records that do not yet have a saved rate.
 

@@ -74,6 +74,13 @@ const orderSchema = new mongoose.Schema({
         type:Boolean,
         default:false
     },
+    coupon:{
+        couponId:{type:mongoose.Schema.Types.ObjectId, ref:"Coupon", default:null},
+        code:{type:String, default:""},
+        discountAmount:{type:Number, default:0},
+        deliverySavings:{type:Number, default:0},
+        totalSavings:{type:Number, default:0}
+    },
     razorpayOrderId:{
         type:String,
         default:""

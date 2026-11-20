@@ -5,8 +5,9 @@ import { createRoot } from "react-dom/client";
 import axios from "axios";
 import {
   Activity, ArrowDownRight, ArrowUpRight, Bell, Bike, Check, ChevronDown,
-  ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, Clock3, LayoutDashboard,
-  LogOut, Menu, Search, ShieldCheck, Store, Users, X,
+  CalendarDays, ChevronLeft, ChevronRight, CircleDollarSign, ClipboardList, Clock3,
+  LayoutDashboard, LogOut, Menu, Pencil, Plus, Search, ShieldCheck, Store, Tag,
+  TicketPercent, Users, X,
 } from "lucide-react";
 import {
   Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -27,7 +28,7 @@ function AdminApp() {
   const [activePage, setActivePage] = useState("Overview");
   const [dashboard, setDashboard] = useState(null);
   const [shops, setShops] = useState([]);
-  const [shopMeta, setShopMeta] = useState({ page: 1, pages: 1, total: 0 });
+  const [shopMeta, setShopMeta] = useState({ page: 1, pages: 1, total: 0, counts: { pending: 0, approved: 0, all: 0, suspended: 0 } });
   const [shopStatus, setShopStatus] = useState("pending");
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -68,7 +69,7 @@ function AdminApp() {
     try {
       const { data } = await api.get("/api/admin/shops", { params: { status: shopStatus, search: query, page, limit: 8 } });
       setShops(data.shops || []);
-      setShopMeta(data.pagination || { page: 1, pages: 1, total: 0 });
+      setShopMeta({ ...(data.pagination || { page: 1, pages: 1, total: 0 }), counts: data.counts || { pending: 0, approved: 0, all: 0, suspended: 0 } });
       setError("");
     } catch (err) {
       setError(err.response?.data?.message || "Could not load the shop list.");
@@ -139,6 +140,7 @@ function AdminApp() {
   const navigation = [
     { label: "Overview", icon: LayoutDashboard },
     { label: "Shops", icon: Store, count: dashboard?.metrics?.pendingApprovals },
+    { label: "Offers", icon: TicketPercent },
   ];
 
   return (
@@ -182,8 +184,10 @@ function AdminApp() {
 
         <div className="page-content">
           {error && <div className="error-banner"><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss error"><X size={16} /></button></div>}
-          {activePage === "Overview" ? <Overview data={dashboard} loading={loading} name={admin.fullName} onOpenShops={() => setActivePage("Shops")} /> : (
+          {activePage === "Overview" ? <Overview data={dashboard} loading={loading} name={admin.fullName} onOpenShops={() => setActivePage("Shops")} /> : activePage === "Shops" ? (
             <ShopManagement shops={shops} meta={shopMeta} status={shopStatus} setStatus={setShopStatus} search={search} setSearch={setSearch} query={query} setQuery={setQuery} loading={loading} onSearch={() => setQuery(search.trim())} onPage={loadShops} onUpdate={updateShop} onReject={(shop) => { setRejecting(shop); setRejectReason(""); }} />
+          ) : (
+            <OfferManagement />
           )}
         </div>
       </main>
@@ -306,7 +310,7 @@ function ShopManagement({ shops, meta, status, setStatus, search, setSearch, set
   const handleSearch = (event) => { event.preventDefault(); onSearch(); };
   return <>
     <div className="page-heading shop-page-heading"><div><p className="eyebrow"><span className="heading-spark">✦</span> PARTNER NETWORK</p><h1>Shop <span>management</span><i>.</i></h1><p className="heading-subtitle">Review applications and keep the marketplace thriving.</p></div><div className="heading-count"><span>{meta.total}</span> shops in view</div></div>
-    <section className="shop-summary-row"><div className="shop-summary-card"><span className="summary-icon pending"><Clock3 size={18} /></span><div><b>{status === "pending" ? meta.total : "—"}</b><small>Awaiting review</small></div></div><div className="shop-summary-card"><span className="summary-icon approved"><Check size={18} /></span><div><b>{status === "approved" ? meta.total : "—"}</b><small>Approved shops</small></div></div><div className="shop-summary-card"><span className="summary-icon total"><Store size={18} /></span><div><b>{status === "all" ? meta.total : "—"}</b><small>Total directory</small></div></div><div className="shop-summary-tip"><span>✦</span><p>Take a moment to review each partner’s details before approving.</p></div></section>
+    <section className="shop-summary-row"><div className="shop-summary-card"><span className="summary-icon pending"><Clock3 size={18} /></span><div><b>{meta.counts?.pending ?? 0}</b><small>Awaiting review</small></div></div><div className="shop-summary-card"><span className="summary-icon approved"><Check size={18} /></span><div><b>{meta.counts?.approved ?? 0}</b><small>Approved shops</small></div></div><div className="shop-summary-card"><span className="summary-icon total"><Store size={18} /></span><div><b>{meta.counts?.all ?? 0}</b><small>Total directory</small></div></div><div className="shop-summary-tip"><span>✦</span><p>Take a moment to review each partner’s details before approving.</p></div></section>
     <section className="panel shops-panel">
       <div className="shops-toolbar"><div className="shop-tabs">{tabs.map(([key, label]) => <button key={key} className={status === key ? "selected" : ""} onClick={() => { setStatus(key); onPage(1); }}>{label}{key === "pending" && status === key && <span>{meta.total}</span>}</button>)}</div>
         <form className="shop-search" onSubmit={handleSearch}><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search shops or owners" /><button aria-label="Search"><ChevronRight size={16} /></button></form>
@@ -324,6 +328,137 @@ function ShopManagement({ shops, meta, status, setStatus, search, setSearch, set
       </tbody></table></div>
       <div className="table-footer"><span>Showing <b>{shops.length ? (meta.page - 1) * 8 + 1 : 0}–{(meta.page - 1) * 8 + shops.length}</b> of <b>{meta.total}</b> shops</span><div className="pagination"><button disabled={meta.page <= 1} onClick={() => onPage(meta.page - 1)} aria-label="Previous page"><ChevronLeft size={17} /></button><span>Page <b>{meta.page || 1}</b> of {meta.pages || 1}</span><button disabled={meta.page >= meta.pages} onClick={() => onPage(meta.page + 1)} aria-label="Next page"><ChevronRight size={17} /></button></div></div>
     </section>
+  </>;
+}
+
+const localDateTime = (value) => {
+  const date = value ? new Date(value) : new Date();
+  const offset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+};
+
+const newOfferForm = () => {
+  const start = new Date();
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  return { code: "", title: "", description: "", discountType: "percentage", discountValue: "10", minOrderAmount: "0", maxDiscount: "", usageLimit: "", perUserLimit: "1", startsAt: localDateTime(start), endsAt: localDateTime(end), firstOrderOnly: false, freeDelivery: false, applicableShops: "", applicableCategories: "", fundingSource: "admin", isActive: true };
+};
+
+function OfferManagement() {
+  const [offers, setOffers] = useState([]);
+  const [loadingOffers, setLoadingOffers] = useState(true);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [form, setForm] = useState(newOfferForm);
+  const [saving, setSaving] = useState(false);
+
+  const loadOffers = useCallback(async () => {
+    setLoadingOffers(true);
+    try {
+      const { data } = await api.get("/api/admin/coupons");
+      setOffers(data.coupons || []);
+      setError("");
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not load platform offers.");
+    } finally {
+      setLoadingOffers(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(loadOffers, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadOffers]);
+
+  const startCreate = () => { setEditing(null); setForm(newOfferForm()); setError(""); setFormOpen(true); };
+  const startEdit = (offer) => {
+    setEditing(offer);
+    setForm({ ...newOfferForm(), ...offer, startsAt: localDateTime(offer.startsAt), endsAt: localDateTime(offer.endsAt), applicableShops: (offer.applicableShops || []).map((id) => typeof id === "object" ? id._id : id).join(", "), applicableCategories: (offer.applicableCategories || []).join(", "), maxDiscount: offer.maxDiscount ?? "", usageLimit: offer.usageLimit ?? "" });
+    setError("");
+    setFormOpen(true);
+  };
+
+  const saveOffer = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    const payload = { ...form, code: form.code.trim().toUpperCase(), discountValue: form.discountValue === "" ? 0 : Number(form.discountValue), minOrderAmount: Number(form.minOrderAmount), maxDiscount: form.maxDiscount === "" ? null : Number(form.maxDiscount), usageLimit: form.usageLimit === "" ? null : Number(form.usageLimit), perUserLimit: Number(form.perUserLimit), startsAt: new Date(form.startsAt).toISOString(), endsAt: new Date(form.endsAt).toISOString() };
+    try {
+      if (editing) await api.patch(`/api/admin/coupons/${editing._id}`, payload);
+      else await api.post("/api/admin/coupons", payload);
+      setNotice(editing ? `${payload.code} updated` : `${payload.code} is live on the customer site`);
+      setEditing(null);
+      setFormOpen(false);
+      await loadOffers();
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not save this offer.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const disableOffer = async (offer) => {
+    if (!window.confirm(`Turn off ${offer.code}? Customers will no longer see or use it.`)) return;
+    try {
+      await api.delete(`/api/admin/coupons/${offer._id}`);
+      setNotice(`${offer.code} turned off`);
+      await loadOffers();
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not turn off this offer.");
+    }
+  };
+
+  const counts = offers.reduce((result, offer) => {
+    const exhausted = offer.usageLimit != null && offer.usedCount >= offer.usageLimit;
+    const active = offer.isActive && !exhausted && new Date(offer.startsAt) <= new Date() && new Date(offer.endsAt) >= new Date();
+    if (active) result.active += 1;
+    result.redemptions += Number(offer.usedCount || 0);
+    return result;
+  }, { active: 0, redemptions: 0 });
+
+  return <>
+    <div className="page-heading offer-page-heading"><div><p className="eyebrow"><span className="heading-spark">✦</span> CUSTOMER PROMOTIONS</p><h1>Offers & <span>coupons</span><i>.</i></h1><p className="heading-subtitle">Create platform deals customers can find on the SnapEats home page and use at checkout.</p></div><button className="create-offer-button" onClick={startCreate}><Plus size={16} /> Create offer</button></div>
+    {error && <div className="offer-error"><span>{error}</span><button onClick={() => setError("")}><X size={15} /></button></div>}
+    {notice && <div className="offer-notice"><Check size={15} />{notice}<button onClick={() => setNotice("")}><X size={14} /></button></div>}
+    <section className="offer-summary-grid"><div className="offer-summary-card"><span className="offer-summary-icon live"><TicketPercent size={18} /></span><span><b>{counts.active}</b><small>Offers live for customers</small></span></div><div className="offer-summary-card"><span className="offer-summary-icon used"><Tag size={18} /></span><span><b>{counts.redemptions}</b><small>Redemptions to date</small></span></div><div className="offer-summary-note"><TicketPercent size={17} /><p>Active offers appear on the customer home page and can be applied at checkout.</p></div></section>
+    <section className="panel offers-panel"><div className="offers-panel-heading"><div><p className="eyebrow">PROMOTION LIBRARY</p><h2>Platform offers</h2></div><span>{offers.length} total</span></div>
+      <div className="table-scroll"><table className="data-table offer-table"><thead><tr><th>OFFER</th><th>CODE</th><th>DISCOUNT</th><th>PERIOD</th><th>USED</th><th>STATUS</th><th>ACTIONS</th></tr></thead><tbody>
+        {loadingOffers ? <tr><td colSpan="7"><i className="skeleton skeleton-row" /></td></tr> : offers.length ? offers.map((offer) => {
+          const live = offer.isActive && new Date(offer.startsAt) <= new Date() && new Date(offer.endsAt) >= new Date();
+          const exhausted = offer.usageLimit != null && offer.usedCount >= offer.usageLimit;
+          const status = !offer.isActive ? "Disabled" : exhausted ? "Used up" : live ? "Live" : new Date(offer.startsAt) > new Date() ? "Scheduled" : "Expired";
+          return <tr key={offer._id}><td><div className="offer-name-cell"><span className="offer-list-icon"><TicketPercent size={16} /></span><span><b>{offer.title}</b><small>{offer.firstOrderOnly ? "First order" : offer.fundingSource === "shop" ? "Shop funded" : "Platform funded"}{offer.freeDelivery ? " · Free delivery" : ""}</small></span></div></td><td><span className="offer-code-tag">{offer.code}</span></td><td><b className="offer-discount">{offer.discountType === "percentage" ? `${offer.discountValue}%` : `₹${offer.discountValue}`}{offer.freeDelivery ? " + delivery" : ""}</b><small className="offer-min-order">{offer.minOrderAmount > 0 ? `Min. ₹${offer.minOrderAmount}` : "No minimum"}</small></td><td><span className="offer-dates">{new Date(offer.startsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}<br />to {new Date(offer.endsAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span></td><td>{offer.usedCount || 0}{offer.usageLimit ? ` / ${offer.usageLimit}` : ""}</td><td><span className={`offer-status ${live ? "is-live" : ""}`}><i />{status}</span></td><td><div className="offer-actions"><button className="offer-edit" onClick={() => startEdit(offer)} aria-label={`Edit ${offer.code}`}><Pencil size={14} /></button>{offer.isActive && <button className="offer-disable" onClick={() => disableOffer(offer)} aria-label={`Turn off ${offer.code}`}><X size={14} /></button>}</div></td></tr>;
+        }) : <tr><td colSpan="7"><div className="empty-table"><TicketPercent size={22} /><span>No offers yet</span><button onClick={startCreate}>Create your first offer</button></div></td></tr>}
+      </tbody></table></div>
+    </section>
+    {formOpen && <div className="modal-backdrop" onClick={() => !saving && setFormOpen(false)}><section className="offer-modal" onClick={(event) => event.stopPropagation()}>
+      <button className="modal-close icon-button" onClick={() => setFormOpen(false)} aria-label="Close offer form"><X size={18} /></button>
+      <div className="modal-icon"><TicketPercent size={20} /></div><p className="eyebrow">CUSTOMER PROMOTION</p><h2>{editing ? `Edit ${editing.code}` : "Create an offer"}</h2><p className="modal-copy">This offer will show on the customer home page and can be applied in checkout while it is active.</p>
+      <form className="offer-form" onSubmit={saveOffer}>
+        <label className="offer-field offer-field-wide">Offer name<input required maxLength="90" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Weekend treat" /></label>
+        <label className="offer-field">Offer code<input required minLength="3" maxLength="32" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase() })} placeholder="WEEKEND20" /></label>
+        <label className="offer-field">Funding<select value={form.fundingSource} onChange={(event) => setForm({ ...form, fundingSource: event.target.value })}><option value="admin">SnapEats</option><option value="shop">Shop</option></select></label>
+        <label className="offer-field offer-field-wide">Short description<textarea rows="2" maxLength="240" value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="A little something for your next order" /></label>
+        <label className="offer-field">Discount type<select value={form.discountType} onChange={(event) => setForm({ ...form, discountType: event.target.value })}><option value="percentage">Percentage</option><option value="flat">Flat amount</option></select></label>
+        <label className="offer-field">Discount value<input type="number" required min="0" max={form.discountType === "percentage" ? 100 : undefined} step="0.01" value={form.discountValue} onChange={(event) => setForm({ ...form, discountValue: event.target.value })} /></label>
+        <label className="offer-field">Minimum order ₹<input type="number" min="0" step="1" value={form.minOrderAmount} onChange={(event) => setForm({ ...form, minOrderAmount: event.target.value })} /></label>
+        <label className="offer-field">Max discount ₹<input type="number" min="0" step="1" value={form.maxDiscount} onChange={(event) => setForm({ ...form, maxDiscount: event.target.value })} placeholder="No cap" /></label>
+        <label className="offer-field">Total uses<input type="number" min="1" step="1" value={form.usageLimit} onChange={(event) => setForm({ ...form, usageLimit: event.target.value })} placeholder="Unlimited" /></label>
+        <label className="offer-field">Uses per customer<input type="number" required min="1" step="1" value={form.perUserLimit} onChange={(event) => setForm({ ...form, perUserLimit: event.target.value })} /></label>
+        <label className="offer-field">Starts at<input type="datetime-local" required value={form.startsAt} onChange={(event) => setForm({ ...form, startsAt: event.target.value })} /></label>
+        <label className="offer-field">Ends at<input type="datetime-local" required value={form.endsAt} onChange={(event) => setForm({ ...form, endsAt: event.target.value })} /></label>
+        <label className="offer-field offer-field-wide">Restaurant IDs <span className="offer-field-help">Optional · comma separated. Leave blank for all restaurants.</span><input value={form.applicableShops} onChange={(event) => setForm({ ...form, applicableShops: event.target.value })} placeholder="Shop IDs" /></label>
+        <label className="offer-field offer-field-wide">Categories <span className="offer-field-help">Optional · comma separated, e.g. Pizza, Burgers.</span><input value={form.applicableCategories} onChange={(event) => setForm({ ...form, applicableCategories: event.target.value })} placeholder="Pizza, Burgers" /></label>
+        <div className="offer-checks offer-field-wide">
+          <label><input type="checkbox" checked={form.firstOrderOnly} onChange={(event) => setForm({ ...form, firstOrderOnly: event.target.checked })} /> First order only</label>
+          <label><input type="checkbox" checked={form.freeDelivery} onChange={(event) => setForm({ ...form, freeDelivery: event.target.checked })} /> Free delivery</label>
+          <label><input type="checkbox" checked={form.isActive} onChange={(event) => setForm({ ...form, isActive: event.target.checked })} /> Publish when saved</label>
+        </div>
+        <div className="offer-modal-actions offer-field-wide"><button type="button" className="button-secondary" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button><button className="button-primary" disabled={saving}>{saving ? "Saving…" : editing ? "Save changes" : "Create offer"}</button></div>
+      </form>
+    </section></div>}
   </>;
 }
 

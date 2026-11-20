@@ -5,6 +5,7 @@ import heroFood from "../assets/image1.jpg";
 import burgerFood from "../assets/image5.jpg";
 import pizzaFood from "../assets/image4.avif";
 import momoFood from "../assets/momo.svg";
+import CouponOffers from "../components/CouponOffers.jsx";
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -115,6 +116,10 @@ const Welcome = () => {
 
         </div>
       </section>
+
+      <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 lg:px-12">
+        <CouponOffers />
+      </div>
 
       <section id="discover" className="border-y border-orange-100/80 bg-white/70">
         <div className="mx-auto grid max-w-7xl gap-7 px-5 py-9 sm:grid-cols-3 sm:gap-6 sm:px-8 lg:px-12">
