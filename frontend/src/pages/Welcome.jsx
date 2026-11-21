@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowRight, Bike, Clock3, MapPin, Star, Utensils } from "lucide-react";
+import { ArrowDown, ArrowRight, Bike, Clock3, MapPin, Star, Utensils, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { categories } from "../category.js";
@@ -132,6 +132,21 @@ const Welcome = () => {
               <img src={item.image} alt="" className="size-12 shrink-0 rounded-xl object-cover sm:size-14" />
               <div className="min-w-0"><p className="truncate text-xs font-extrabold text-[#3d332d] sm:text-sm">{item.category}</p><p className="mt-0.5 text-[10px] text-[#94877d]">Made fresh nearby</p></div>
             </article>)}
+          </div>
+
+          <div className="mt-4 grid gap-2.5 sm:grid-cols-3">
+            <article className="flex items-start gap-3 rounded-2xl border border-[#f1e5dd] bg-white/80 p-3 sm:p-3.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#fff0e7] text-[#ef5a3a]"><MapPin size={17} /></span>
+              <div><h3 className="text-xs font-extrabold text-[#3d332d]">Nearby kitchens</h3><p className="mt-1 text-[11px] leading-4 text-[#8c8077]">Find local restaurants and dishes around you.</p></div>
+            </article>
+            <article className="flex items-start gap-3 rounded-2xl border border-[#f1e5dd] bg-white/80 p-3 sm:p-3.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#fff5df] text-[#c18429]"><Wallet size={17} /></span>
+              <div><h3 className="text-xs font-extrabold text-[#3d332d]">Pay your way</h3><p className="mt-1 text-[11px] leading-4 text-[#8c8077]">Choose cash on delivery or secure online payment.</p></div>
+            </article>
+            <article className="flex items-start gap-3 rounded-2xl border border-[#f1e5dd] bg-white/80 p-3 sm:p-3.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#edf6ef] text-[#538b5c]"><Bike size={17} /></span>
+              <div><h3 className="text-xs font-extrabold text-[#3d332d]">Order updates</h3><p className="mt-1 text-[11px] leading-4 text-[#8c8077]">Follow your order on its way to your door.</p></div>
+            </article>
           </div>
         </div>
       </section>
