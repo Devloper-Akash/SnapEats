@@ -16,6 +16,14 @@ import "./admin.css";
 
 const serverUrl = import.meta.env.VITE_ADMIN_SERVER_URL || (import.meta.env.DEV ? "http://localhost:8000" : import.meta.env.VITE_SERVER_URL || "https://snapeats-backend-g91m.onrender.com");
 const api = axios.create({ baseURL: serverUrl, withCredentials: true, timeout: 15000 });
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("admin_token") || localStorage.getItem("token");
+  if (token) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 const money = (value) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value || 0);
 const compactNumber = (value) => new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 }).format(value || 0);
 const initials = (name = "Admin") => name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
@@ -99,11 +107,15 @@ function AdminApp() {
     setLoginBusy(true);
     setError("");
     try {
-      await api.post("/api/admin/session/signin", login);
+      const res = await api.post("/api/admin/session/signin", login);
+      if (res.data?.token) {
+        localStorage.setItem("admin_token", res.data.token);
+      }
       const { data } = await api.get("/api/admin/me");
       setAdmin(data.admin);
     } catch (err) {
       await api.post("/api/admin/session/signout").catch(() => {});
+      localStorage.removeItem("admin_token");
       const responseMessage = typeof err.response?.data?.message === "string" ? err.response.data.message : "";
       if (responseMessage) setError(responseMessage);
       else if (err.response?.status === 404) setError("The admin sign-in API is not deployed on this backend yet. Deploy the backend admin routes, then try again.");
@@ -116,6 +128,7 @@ function AdminApp() {
 
   const signOut = async () => {
     await api.post("/api/admin/session/signout").catch(() => {});
+    localStorage.removeItem("admin_token");
     setAdmin(null);
     setDashboard(null);
     setActivePage("Overview");

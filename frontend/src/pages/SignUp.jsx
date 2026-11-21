@@ -38,6 +38,9 @@ const SignUp = () => {
         { fullName, email, password, mobile, role },
         { withCredentials: true },
       );
+      if (result.data?.token) {
+        localStorage.setItem("token", result.data.token);
+      }
       dispatch(setUserData(result.data));
       setErr("");
     } catch (error) {
@@ -66,6 +69,9 @@ const SignUp = () => {
         },
         { withCredentials: true },
       );
+      if (data?.token) {
+        localStorage.setItem("token", data.token);
+      }
       dispatch(setUserData(data));
       setErr("");
     } catch (error) {

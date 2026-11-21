@@ -100,10 +100,10 @@ const OwnerDashboard = () => {
             ))}
           </section>
 
-          <div className="mt-6 grid items-start gap-5 lg:grid-cols-[1.08fr_0.92fr]">
-            <section className="rounded-[28px] border border-[#f0e1d8] bg-white p-4 shadow-[0_16px_45px_-38px_rgba(75,39,23,0.55)] sm:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c45e40]">Kitchen queue</span><h2 className="mt-1 text-xl font-black text-[#302923] sm:text-2xl">Incoming orders</h2><p className="mt-1 text-xs text-[#8f837a]">Keep each order moving smoothly.</p></div>
+          <div className="mt-6 grid min-w-0 grid-cols-1 items-start gap-5 lg:grid-cols-[1.08fr_0.92fr]">
+            <section className="min-w-0 rounded-[28px] border border-[#f0e1d8] bg-white p-4 shadow-[0_16px_45px_-38px_rgba(75,39,23,0.55)] sm:p-6">
+              <div className="mb-4 flex min-w-0 items-start justify-between gap-3 sm:items-center">
+                <div className="min-w-0 flex-1"><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c45e40]">Kitchen queue</span><h2 className="mt-1 text-xl font-black text-[#302923] sm:text-2xl">Incoming orders</h2><p className="mt-1 text-xs text-[#8f837a]">Keep each order moving smoothly.</p></div>
                 <button onClick={() => navigate("/my-orders")} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#f0ddd2] bg-[#fffaf7] px-3 text-xs font-bold text-[#c65336] transition hover:bg-[#fff0e7]">View all <ArrowRight size={14} /></button>
               </div>
               {incomingOrders.length ? (
@@ -117,9 +117,9 @@ const OwnerDashboard = () => {
               )}
             </section>
 
-            <section className="rounded-[28px] border border-[#f0e1d8] bg-white p-4 shadow-[0_16px_45px_-38px_rgba(75,39,23,0.55)] sm:p-6">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c45e40]">Your dishes</span><h2 className="mt-1 text-xl font-black text-[#302923] sm:text-2xl">Menu items</h2><p className="mt-1 text-xs text-[#8f837a]">Manage the food you’re serving.</p></div>
+            <section className="min-w-0 rounded-[28px] border border-[#f0e1d8] bg-white p-4 shadow-[0_16px_45px_-38px_rgba(75,39,23,0.55)] sm:p-6">
+              <div className="mb-4 flex min-w-0 items-start justify-between gap-3 sm:items-center">
+                <div className="min-w-0 flex-1"><span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#c45e40]">Your dishes</span><h2 className="mt-1 text-xl font-black text-[#302923] sm:text-2xl">Menu items</h2><p className="mt-1 text-xs text-[#8f837a]">Manage the food you’re serving.</p></div>
                 <button onClick={() => navigate("/add-item")} aria-label="Add a dish" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#ff4d2d] text-white transition hover:rotate-90 hover:bg-[#e94325]"><Plus size={19} /></button>
               </div>
               {menuItems.length ? (

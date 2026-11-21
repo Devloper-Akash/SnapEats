@@ -5,6 +5,20 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import { Provider } from 'react-redux'
 import { store } from './redux/store.js'
+import axios from 'axios'
+
+axios.defaults.withCredentials = true;
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>

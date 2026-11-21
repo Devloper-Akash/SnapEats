@@ -41,7 +41,7 @@ export const signInAdmin = [rateLimitAdminLogin, async (req, res) => {
     const key = req.ip || req.socket.remoteAddress || "unknown";
     attempts.delete(key);
     res.cookie("token", token, cookieOptions());
-    return res.json({ admin: { _id: user._id, fullName: user.fullName, email: user.email, adminRole: user.adminRole } });
+    return res.json({ admin: { _id: user._id, fullName: user.fullName, email: user.email, adminRole: user.adminRole }, token });
   } catch (error) {
     console.error("Admin sign-in error:", error);
     return res.status(500).json({ message: "Unable to sign in right now." });

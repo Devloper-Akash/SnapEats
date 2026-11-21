@@ -42,7 +42,8 @@ export const signUp = async (req, res) => {
         const token = await genToken(user._id);
         res.cookie("token", token, cookieOptions());
 
-        return res.status(201).json(user);
+        const userData = user.toObject ? user.toObject() : user;
+        return res.status(201).json({ ...userData, token });
     } catch (error) {
         return res.status(500).json(`Sign up error ${error}`);
     }
@@ -69,7 +70,8 @@ export const signIn = async (req, res) => {
         const token = await genToken(user._id);
         res.cookie("token", token, cookieOptions());
 
-        return res.status(200).json(user);
+        const userData = user.toObject ? user.toObject() : user;
+        return res.status(200).json({ ...userData, token });
     } catch (error) {
         return res.status(500).json(`Sign In error ${error}`);
     }
@@ -176,7 +178,8 @@ export const googleAuth = async (req, res) => {
         const token = await genToken(user._id);
         res.cookie("token", token, cookieOptions());
 
-        return res.status(200).json(user);
+        const userData = user.toObject ? user.toObject() : user;
+        return res.status(200).json({ ...userData, token });
 
     } catch (error) {
         return res.status(500).json({ message: `Google Auth error ${error?.message || error}` });

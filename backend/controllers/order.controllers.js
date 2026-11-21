@@ -28,6 +28,20 @@ const formatOwnerOrder = (order, ownerId) => ({
   deliveryAddress: order.deliveryAddress,
 });
 
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export const placeOrder = async (req, res) => {
   try {
     const { cartItems, paymentMethod, deliveryAddress, totalAmount, couponCode } = req.body;
@@ -65,6 +79,47 @@ export const placeOrder = async (req, res) => {
       }
       groupItemsByShop[shopId].push(item);
     });
+
+    // Validate each shop and check city/delivery distance
+    for (const shopId of Object.keys(groupItemsByShop)) {
+      const shop = await Shop.findById(shopId).populate("owner");
+      if (!shop) {
+        return res.status(400).json({ message: "Shop Not Found" });
+      }
+
+      // Check city delivery matching if deliveryAddress.city is provided
+      const deliveryCity = (deliveryAddress.city || "").trim().toLowerCase();
+      const shopCity = (shop.city || "").trim().toLowerCase();
+      if (deliveryCity && shopCity && !shopCity.includes(deliveryCity) && !deliveryCity.includes(shopCity)) {
+        return res.status(400).json({
+          message: `${shop.name} is in ${shop.city} and only delivers within ${shop.city}. Your selected location is in ${deliveryAddress.city}. Please select a delivery address in ${shop.city}.`,
+        });
+      }
+
+      // Check distance if shop owner location coordinates are recorded
+      const ownerCoords = shop.owner?.location?.coordinates;
+      if (
+        Array.isArray(ownerCoords) &&
+        ownerCoords.length === 2 &&
+        (ownerCoords[0] !== 0 || ownerCoords[1] !== 0) &&
+        Number.isFinite(Number(deliveryAddress.latitude)) &&
+        Number.isFinite(Number(deliveryAddress.longitude))
+      ) {
+        const [shopLon, shopLat] = ownerCoords;
+        const distKm = calculateDistanceKm(
+          shopLat,
+          shopLon,
+          Number(deliveryAddress.latitude),
+          Number(deliveryAddress.longitude),
+        );
+        const MAX_DELIVERY_RADIUS_KM = 30; // 30 km max radius
+        if (distKm > MAX_DELIVERY_RADIUS_KM) {
+          return res.status(400).json({
+            message: `${shop.name} only delivers within ${MAX_DELIVERY_RADIUS_KM} km of the restaurant. Your selected location is ${Math.round(distKm)} km away. Please choose a delivery address closer to ${shop.name}.`,
+          });
+        }
+      }
+    }
 
     const shopOrders = await Promise.all(
       Object.keys(groupItemsByShop).map(async (shopId) => {

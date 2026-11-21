@@ -28,6 +28,9 @@ const SignIn = () => {
         { email, password },
         { withCredentials: true },
       );
+      if (result.data?.token) {
+        localStorage.setItem("token", result.data.token);
+      }
       dispatch(setUserData(result.data));
       setErr("");
     } catch (error) {
@@ -46,6 +49,9 @@ const SignIn = () => {
         { fullName: result.user.displayName, email: result.user.email },
         { withCredentials: true },
       );
+      if (data?.token) {
+        localStorage.setItem("token", data.token);
+      }
       dispatch(setUserData(data));
       setErr("");
     } catch (error) {

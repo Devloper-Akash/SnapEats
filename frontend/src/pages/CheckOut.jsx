@@ -27,7 +27,7 @@ function RecenterMap({ location }) {
 
 function CheckOut() {
   const { location, address } = useSelector((state) => state.map);
-  const { cartItems, totalAmount, userData } = useSelector((state) => state.user);
+  const { cartItems, totalAmount, userData, currentCity, currentState } = useSelector((state) => state.user);
   const [addressInput, setAddressInput] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [locationMessage, setLocationMessage] = useState("");
@@ -175,6 +175,8 @@ function CheckOut() {
             text: addressInput,
             latitude: location.lat,
             longitude: location.lon,
+            city: currentCity,
+            state: currentState,
           },
           totalAmount: amountWithDeliveryFee,
           cartItems,
@@ -194,7 +196,11 @@ function CheckOut() {
       }
     } catch (error) {
       console.log(error.response?.data || error.message);
-      setOrderError(error.response?.data?.message || "Your order could not be placed. Please try again.");
+      if (error.response?.status === 401) {
+        setOrderError("Your session has expired. Please sign in again to place your order.");
+      } else {
+        setOrderError(error.response?.data?.message || "Your order could not be placed. Please try again.");
+      }
     } finally {
       if (paymentMethod === "cod") {
         setIsPlacingOrder(false);
@@ -522,7 +528,19 @@ function CheckOut() {
                       : "Pay & place order"}
                     <ArrowRight size={17} />
                   </button>
-                  {orderError && <p role="alert" className="rounded-xl bg-[#fff1ed] px-3 py-2 text-xs text-[#b24d39]">{orderError}</p>}
+                  {orderError && (
+                    <div role="alert" className="rounded-xl border border-[#f5c6cb] bg-[#fff1ed] p-3 text-xs text-[#b24d39]">
+                      <p className="font-semibold">{orderError}</p>
+                      {orderError.includes("sign in again") && (
+                        <Link
+                          to="/signin"
+                          className="mt-1.5 inline-block font-bold text-[#b83824] underline hover:text-[#8d2a17]"
+                        >
+                          Sign in to continue &rarr;
+                        </Link>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center justify-center gap-2 pt-1 text-xs font-medium text-[#887c73]">
                     <ShieldCheck size={15} className="text-[#5c9a70]" /> Secure payment and order details
                   </div>
