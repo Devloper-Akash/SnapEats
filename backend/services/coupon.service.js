@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Coupon from "../models/coupon.model.js";
 import Item from "../models/item.model.js";
 import Order from "../models/order.model.js";
+import Shop from "../models/shop.model.js";
 
 export class CouponError extends Error {
   constructor(message, status = 400) {
@@ -25,7 +26,18 @@ export const quoteCoupon = async ({ userId, code, cartItems }) => {
 
   const personalUseCount = coupon.redemptions.filter((entry) => String(entry.user) === String(userId)).length;
   if (personalUseCount >= coupon.perUserLimit) throw new CouponError("You have already used this offer the maximum number of times.");
-  if (coupon.firstOrderOnly && await Order.exists({ user: userId })) throw new CouponError("This offer is for your first order only.");
+  if (coupon.firstOrderOnly) {
+    const hasPriorCompletedOrder = await Order.exists({
+      user: userId,
+      $or: [
+        { paymentMethod: "cod" },
+        { paymentMethod: "online", payment: true },
+      ],
+    });
+    if (hasPriorCompletedOrder) {
+      throw new CouponError("This offer is for your first order only.");
+    }
+  }
 
   const normalizedItems = cartItems.map((item) => ({
     id: String(item.id || item.item || ""),
@@ -38,20 +50,46 @@ export const quoteCoupon = async ({ userId, code, cartItems }) => {
 
   const ids = normalizedItems.map((item) => item.id);
   if (new Set(ids).size !== ids.length) throw new CouponError("Remove duplicate cart lines and try again.");
-  const databaseItems = await Item.find({ _id: { $in: ids } }).select("name image price shop category").lean();
+  const databaseItems = await Item.find({ _id: { $in: ids } })
+    .select("name image price shop category")
+    .populate("shop", "name")
+    .lean();
   if (databaseItems.length !== ids.length) throw new CouponError("One or more dishes are no longer available.");
   const byId = new Map(databaseItems.map((item) => [String(item._id), item]));
   let subtotal = 0;
   let eligibleSubtotal = 0;
   const verifiedItems = normalizedItems.map((cartItem) => {
     const item = byId.get(cartItem.id);
-    const shopId = String(item.shop);
+    const shopObj = item.shop;
+    const shopId = String(shopObj?._id || shopObj || "");
+    const shopName = String(shopObj?.name || "").toLowerCase().trim();
+    const itemCategory = String(item.category || "").toLowerCase().trim();
+    const itemName = String(item.name || "").toLowerCase().trim();
+
     if (cartItem.shop && cartItem.shop !== shopId) throw new CouponError("A dish has moved to a different restaurant. Refresh your cart.");
     const lineTotal = Number(item.price) * cartItem.quantity;
     subtotal += lineTotal;
-    const matchesShop = coupon.applicableShops.length > 0 && coupon.applicableShops.some((shop) => String(shop) === shopId);
-    const matchesCategory = coupon.applicableCategories.length > 0 && coupon.applicableCategories.some((category) => category.toLowerCase() === String(item.category || "").toLowerCase());
-    const hasScope = coupon.applicableShops.length > 0 || coupon.applicableCategories.length > 0;
+
+    const matchesShop =
+      coupon.applicableShops.length > 0 &&
+      coupon.applicableShops.some((shop) => {
+        const s = String(shop).toLowerCase().trim();
+        return String(shop) === shopId || (shopName && shopName === s);
+      });
+
+    const matchesCategory =
+      coupon.applicableCategories.length > 0 &&
+      coupon.applicableCategories.some((category) => {
+        const c = String(category).toLowerCase().trim();
+        return (
+          (itemCategory && (itemCategory === c || itemCategory.includes(c) || c.includes(itemCategory))) ||
+          (shopName && (shopName === c || shopName.includes(c))) ||
+          (itemName && itemName.includes(c))
+        );
+      });
+
+    const hasScope =
+      coupon.applicableShops.length > 0 || coupon.applicableCategories.length > 0;
     if (!hasScope || matchesShop || matchesCategory) eligibleSubtotal += lineTotal;
     return { id: cartItem.id, name: item.name, image: item.image, price: Number(item.price), shop: shopId, category: item.category, quantity: cartItem.quantity };
   });
