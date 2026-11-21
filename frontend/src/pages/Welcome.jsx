@@ -1,11 +1,15 @@
-import { ArrowDown, ArrowRight, Bike, Clock3, MapPin, Star } from "lucide-react";
+import { ArrowDown, ArrowRight, Bike, Clock3, MapPin, Star, Utensils } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
+import { categories } from "../category.js";
 import heroFood from "../assets/image1.jpg";
 import burgerFood from "../assets/image5.jpg";
 import pizzaFood from "../assets/image4.avif";
 import momoFood from "../assets/momo.svg";
-import CouponOffers from "../components/CouponOffers.jsx";
+
+const featuredCategories = categories.filter(({ category }) =>
+  ["Snacks", "Main Course", "Pizzas", "Burgers", "Chinese", "South Indian"].includes(category),
+);
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -71,10 +75,12 @@ const Welcome = () => {
             </a>
           </div>
 
-          <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-[#746b64]">
+          <div className="mt-9 flex flex-wrap items-center gap-x-5 gap-y-3 text-sm text-[#746b64]">
             <div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-[#ff4d2d]"><Clock3 size={16} /></span><span><strong className="text-[#26221f]">Fast delivery</strong><br />right to your door</span></div>
             <span className="hidden h-9 w-px bg-orange-100 sm:block" />
             <div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-[#ff4d2d]"><Star size={16} fill="currentColor" /></span><span><strong className="text-[#26221f]">Local favorites</strong><br />made fresh nearby</span></div>
+            <span className="hidden h-9 w-px bg-orange-100 sm:block" />
+            <div className="flex items-center gap-2"><span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-[#ff4d2d]"><Bike size={16} /></span><span><strong className="text-[#26221f]">Order with ease</strong><br />follow it to your door</span></div>
           </div>
         </div>
 
@@ -115,11 +121,20 @@ const Welcome = () => {
           </div>
 
         </div>
-      </section>
 
-      <div className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 lg:px-12">
-        <CouponOffers />
-      </div>
+        <div className="relative z-[1] mt-2 min-w-0 lg:col-span-2">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-extrabold text-[#302923]"><span className="flex size-8 items-center justify-center rounded-xl bg-white text-[#ff4d2d] shadow-sm"><Utensils size={16} /></span>Start with a craving</div>
+            <span className="text-[11px] font-semibold text-[#9a8b81] sm:text-xs">A taste of what’s on the menu</span>
+          </div>
+          <div className="flex snap-x gap-3 overflow-x-auto pb-2">
+            {featuredCategories.map((item) => <article key={item.category} className="group flex min-w-[145px] snap-start items-center gap-3 rounded-2xl border border-[#f1e2d9] bg-white/90 p-2.5 shadow-[0_10px_25px_-22px_rgba(75,39,23,0.45)] transition hover:-translate-y-0.5 hover:shadow-md sm:min-w-[170px] sm:p-3">
+              <img src={item.image} alt="" className="size-12 shrink-0 rounded-xl object-cover sm:size-14" />
+              <div className="min-w-0"><p className="truncate text-xs font-extrabold text-[#3d332d] sm:text-sm">{item.category}</p><p className="mt-0.5 text-[10px] text-[#94877d]">Made fresh nearby</p></div>
+            </article>)}
+          </div>
+        </div>
+      </section>
 
       <section id="discover" className="border-y border-orange-100/80 bg-white/70">
         <div className="mx-auto grid max-w-7xl gap-7 px-5 py-9 sm:grid-cols-3 sm:gap-6 sm:px-8 lg:px-12">

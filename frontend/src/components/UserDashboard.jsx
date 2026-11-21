@@ -5,7 +5,6 @@ import ShopCard from './ShopCard';
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useSelector } from 'react-redux';
 import FoodCard from './FoodCard.jsx';
-import CouponOffers from './CouponOffers.jsx';
 
 
 
@@ -93,7 +92,6 @@ const UserDashboard = () => {
           </div>
         </div>
       )}
-      <CouponOffers />
       <section className="relative w-full overflow-hidden rounded-[28px] border border-[#f2dfd3] bg-gradient-to-br from-white via-[#fffaf6] to-[#fff0e7] p-5 shadow-[0_16px_42px_-34px_rgba(110,56,31,0.42)] sm:p-7">
         <div className="pointer-events-none absolute -right-10 -top-16 size-48 rounded-full bg-[#ffb383]/15 blur-3xl" />
         <div className="relative mb-5 flex items-end justify-between gap-4 sm:mb-7">

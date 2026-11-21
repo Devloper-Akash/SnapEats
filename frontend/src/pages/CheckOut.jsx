@@ -14,6 +14,7 @@ import { useMap } from "react-leaflet";
 import axios from "axios";
 import { serverUrl } from "@/App";
 import { addMyOrder, clearCart } from "@/redux/userSlice";
+import CouponOffers from "@/components/CouponOffers.jsx";
 
 function RecenterMap({ location }) {
   const map = useMap();
@@ -579,6 +580,7 @@ function CheckOut() {
                     <span>Delivery fee</span><span className="font-semibold text-[#302923]">{deliveryFee === 0 ? <span className="text-[#3c8a58]">Free</span> : `₹${deliveryFee.toFixed(2)}`}</span>
                   </div>
                   {deliveryFee === 0 && <div className="rounded-xl bg-[#edf7ef] px-3 py-2 text-xs font-semibold text-[#34794b]">You’ve unlocked free delivery.</div>}
+                  <CouponOffers />
                   <div className="relative rounded-2xl border border-[#f0e2d9] bg-[#fffaf6] p-3.5">
                     {couponCelebration && <div className="coupon-fireworks" aria-hidden="true"><span className="coupon-firework coupon-firework-one">{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ "--angle": `${index * 45}deg` }} />)}</span><span className="coupon-firework coupon-firework-two">{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ "--angle": `${index * 45 + 22.5}deg` }} />)}</span></div>}
                     <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#51473f]">Have an offer code?</span>{appliedCoupon && <button type="button" onClick={removeCoupon} className="text-[11px] font-bold text-[#c25b40]">Remove</button>}</div>
