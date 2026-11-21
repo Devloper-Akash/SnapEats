@@ -13,7 +13,7 @@ import {
 import { useMap } from "react-leaflet";
 import axios from "axios";
 import { serverUrl } from "@/App";
-import { addMyOrder } from "@/redux/userSlice";
+import { addMyOrder, clearCart } from "@/redux/userSlice";
 
 function RecenterMap({ location }) {
   const map = useMap();
@@ -36,6 +36,7 @@ function CheckOut() {
   const [couponMessage, setCouponMessage] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
   const [orderError, setOrderError] = useState("");
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const subtotal = Number(totalAmount || 0);
   const cartKey = cartItems.map((item) => `${item.id}:${item.quantity}`).sort().join("|");
@@ -159,7 +160,9 @@ function CheckOut() {
   };
 
   const handlePlaceOrder = async () => {
+    if (isPlacingOrder) return;
     setOrderError("");
+    setIsPlacingOrder(true);
     try {
       const result = await axios.post(
         `${serverUrl}/api/order/place-order`,
@@ -178,6 +181,7 @@ function CheckOut() {
       );
 
       if (paymentMethod == "cod") {
+        dispatch(clearCart());
         dispatch(addMyOrder(result.data));
         navigate("/order-placed");
       } else {
@@ -188,10 +192,15 @@ function CheckOut() {
     } catch (error) {
       console.log(error.response?.data || error.message);
       setOrderError(error.response?.data?.message || "Your order could not be placed. Please try again.");
+    } finally {
+      if (paymentMethod === "cod") {
+        setIsPlacingOrder(false);
+      }
     }
   };
 
   const openRazorpayWindow = (orderId, razorOrder) => {
+    let paymentSuccess = false;
     const options = {
       key: import.meta.env.VITE_RAZORPAY_KEY_ID || import.meta.env.VITE_RAZORPAY_KEY,
       amount: razorOrder.amount,
@@ -226,7 +235,25 @@ function CheckOut() {
       theme: {
         color: "#ff4d2d",
       },
+      modal: {
+        ondismiss: async function () {
+          setIsPlacingOrder(false);
+          if (!paymentSuccess) {
+            try {
+              await axios.post(
+                `${serverUrl}/api/order/cancel-unpaid-order`,
+                { orderId },
+                { withCredentials: true },
+              );
+            } catch (e) {
+              console.error("Failed to cancel unpaid order", e);
+            }
+            setOrderError("Payment was not completed. Your order was not placed.");
+          }
+        },
+      },
       handler: async function (response) {
+        paymentSuccess = true;
         try {
           const result = await axios.post(
             `${serverUrl}/api/order/verify-payment`,
@@ -240,16 +267,34 @@ function CheckOut() {
             { withCredentials: true },
           );
           if (result.data) {
+            dispatch(clearCart());
             dispatch(addMyOrder(result.data));
           }
           navigate("/order-placed");
         } catch (error) {
           console.error("Payment verification error:", error.response?.data || error.message);
-          alert(error.response?.data?.message || "Payment verification failed. Please check your orders.");
+          setOrderError(error.response?.data?.message || "Payment verification failed. Please check your orders.");
+        } finally {
+          setIsPlacingOrder(false);
         }
       },
     };
     const rzp = new window.Razorpay(options);
+    rzp.on("payment.failed", async function (response) {
+      setIsPlacingOrder(false);
+      if (!paymentSuccess) {
+        try {
+          await axios.post(
+            `${serverUrl}/api/order/cancel-unpaid-order`,
+            { orderId },
+            { withCredentials: true },
+          );
+        } catch (e) {
+          console.error("Failed to cancel unpaid order", e);
+        }
+        setOrderError(response.error?.description || "Payment failed. Your order was not placed.");
+      }
+    });
     rzp.open();
   };
 
@@ -462,10 +507,15 @@ function CheckOut() {
                   </div>
                   <button
                     type="button"
+                    disabled={isPlacingOrder}
                     onClick={handlePlaceOrder}
-                    className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#ff4d2d] px-5 text-sm font-bold text-white shadow-[0_8px_20px_-12px_rgba(255,77,45,0.8)] transition hover:-translate-y-0.5 hover:bg-[#e94325]"
+                    className="mt-2 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#ff4d2d] px-5 text-sm font-bold text-white shadow-[0_8px_20px_-12px_rgba(255,77,45,0.8)] transition hover:-translate-y-0.5 hover:bg-[#e94325] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   >
-                    {paymentMethod === "cod" ? "Place order" : "Pay & place order"}
+                    {isPlacingOrder
+                      ? "Processing..."
+                      : paymentMethod === "cod"
+                      ? "Place order"
+                      : "Pay & place order"}
                     <ArrowRight size={17} />
                   </button>
                   {orderError && <p role="alert" className="rounded-xl bg-[#fff1ed] px-3 py-2 text-xs text-[#b24d39]">{orderError}</p>}

@@ -10,10 +10,17 @@ export const getAdminDashboard = async (_req, res) => {
     const since = new Date();
     since.setDate(since.getDate() - 6);
     since.setHours(0, 0, 0, 0);
+    const validOrderMatch = {
+      $or: [
+        { paymentMethod: "cod" },
+        { paymentMethod: "online", payment: true },
+      ],
+    };
     const [orderCount, orderTotals, commissionTotals, shopCount, pendingShops, onlineCouriers, userCount, recentOrders, salesTrend, statusCounts, topShops, topDeliveryBoys, activeAssignments] = await Promise.all([
-      Order.countDocuments(),
-      Order.aggregate([{ $group: { _id: null, gmv: { $sum: "$totalAmount" } } }]),
+      Order.countDocuments(validOrderMatch),
+      Order.aggregate([{ $match: validOrderMatch }, { $group: { _id: null, gmv: { $sum: "$totalAmount" } } }]),
       Order.aggregate([
+        { $match: validOrderMatch },
         { $unwind: "$shopOrders" },
         { $lookup: { from: "shops", localField: "shopOrders.shop", foreignField: "_id", as: "shopInfo" } },
         { $set: { commissionRate: { $ifNull: [{ $first: "$shopInfo.commissionRate" }, 10] } } },
@@ -23,11 +30,11 @@ export const getAdminDashboard = async (_req, res) => {
       Shop.countDocuments({ $or: [{ approvalStatus: "pending" }, { approvalStatus: { $exists: false } }] }),
       User.countDocuments({ role: "deliveryBoy", isOnline: true, isBlocked: { $ne: true } }),
       User.countDocuments({ role: "user", createdAt: { $gte: since } }),
-      Order.find().sort({ createdAt: -1 }).limit(7).populate("user", "fullName").populate("shopOrders.shop", "name").lean(),
-      Order.aggregate([{ $match: { createdAt: { $gte: since } } }, { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, orders: { $sum: 1 }, sales: { $sum: "$totalAmount" } } }, { $sort: { _id: 1 } }]),
-      Order.aggregate([{ $unwind: "$shopOrders" }, { $group: { _id: "$shopOrders.status", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
-      Order.aggregate([{ $unwind: "$shopOrders" }, { $group: { _id: "$shopOrders.shop", orders: { $sum: 1 }, sales: { $sum: "$shopOrders.subTotal" } } }, { $sort: { sales: -1 } }, { $limit: 5 }, { $lookup: { from: "shops", localField: "_id", foreignField: "_id", as: "shop" } }, { $unwind: { path: "$shop", preserveNullAndEmptyArrays: true } }, { $project: { name: { $ifNull: ["$shop.name", "Unknown shop"] }, orders: 1, sales: 1 } }]),
-      Order.aggregate([{ $unwind: "$shopOrders" }, { $match: { "shopOrders.status": "delivered", "shopOrders.assignedDeliveryBoy": { $ne: null } } }, { $group: { _id: "$shopOrders.assignedDeliveryBoy", deliveries: { $sum: 1 } } }, { $sort: { deliveries: -1 } }, { $limit: 5 }, { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "courier" } }, { $unwind: { path: "$courier", preserveNullAndEmptyArrays: true } }, { $project: { fullName: { $ifNull: ["$courier.fullName", "Delivery partner"] }, deliveries: 1 } }]),
+      Order.find(validOrderMatch).sort({ createdAt: -1 }).limit(7).populate("user", "fullName").populate("shopOrders.shop", "name").lean(),
+      Order.aggregate([{ $match: { ...validOrderMatch, createdAt: { $gte: since } } }, { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, orders: { $sum: 1 }, sales: { $sum: "$totalAmount" } } }, { $sort: { _id: 1 } }]),
+      Order.aggregate([{ $match: validOrderMatch }, { $unwind: "$shopOrders" }, { $group: { _id: "$shopOrders.status", count: { $sum: 1 } } }, { $sort: { count: -1 } }]),
+      Order.aggregate([{ $match: validOrderMatch }, { $unwind: "$shopOrders" }, { $group: { _id: "$shopOrders.shop", orders: { $sum: 1 }, sales: { $sum: "$shopOrders.subTotal" } } }, { $sort: { sales: -1 } }, { $limit: 5 }, { $lookup: { from: "shops", localField: "_id", foreignField: "_id", as: "shop" } }, { $unwind: { path: "$shop", preserveNullAndEmptyArrays: true } }, { $project: { name: { $ifNull: ["$shop.name", "Unknown shop"] }, orders: 1, sales: 1 } }]),
+      Order.aggregate([{ $match: validOrderMatch }, { $unwind: "$shopOrders" }, { $match: { "shopOrders.status": "delivered", "shopOrders.assignedDeliveryBoy": { $ne: null } } }, { $group: { _id: "$shopOrders.assignedDeliveryBoy", deliveries: { $sum: 1 } } }, { $sort: { deliveries: -1 } }, { $limit: 5 }, { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "courier" } }, { $unwind: { path: "$courier", preserveNullAndEmptyArrays: true } }, { $project: { fullName: { $ifNull: ["$courier.fullName", "Delivery partner"] }, deliveries: 1 } }]),
       DeliveryAssignment.countDocuments({ status: { $in: ["brodcasted", "assigned"] } }),
     ]);
 

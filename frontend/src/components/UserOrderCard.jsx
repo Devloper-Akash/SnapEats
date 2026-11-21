@@ -53,7 +53,7 @@ function UserOrderCard({ data }) {
         </div>
         <div className="flex flex-wrap items-center gap-2 pl-14 sm:pl-0">
           <span className="inline-flex items-center gap-1.5 rounded-full border border-[#eee4de] bg-white px-3 py-1.5 text-[11px] font-bold text-[#73685f]">
-            <CreditCard size={13} /> {data.paymentMethod === "cod" ? "Cash on delivery" : data.payment ? "Paid online" : "Online payment"}
+            <CreditCard size={13} /> {data.paymentMethod === "cod" ? "Cash on delivery" : data.payment ? "Paid online" : "Payment incomplete"}
           </span>
           <span className={`rounded-full border px-3 py-1.5 text-[11px] font-bold capitalize ${getStatusStyle(orderStatus)}`}>{orderStatus}</span>
         </div>
@@ -130,7 +130,7 @@ function UserOrderCard({ data }) {
           <span className="block text-xs font-semibold text-[#887c73]">Order total</span>
           <strong className="mt-0.5 block text-2xl font-extrabold tracking-tight text-[#e64b2e]">₹{total.toFixed(2)}</strong>
         </div>
-        {orderStatus.toLowerCase() !== "cancelled" && (
+        {orderStatus.toLowerCase() !== "cancelled" && (data.paymentMethod === "cod" || data.payment) && (
           <button
             type="button"
             onClick={() => navigate(`/track-order/${data._id}`)}

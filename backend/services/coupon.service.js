@@ -92,3 +92,18 @@ export const reserveCouponUse = async ({ coupon, userId, orderId }) => {
     $push: { redemptions: { user: userId, order: orderId, redeemedAt: now } },
   }, { new: true });
 };
+
+export const releaseCouponUse = async ({ couponId, orderId }) => {
+  if (!couponId || !orderId) return;
+  try {
+    await Coupon.updateOne(
+      { _id: couponId },
+      {
+        $inc: { usedCount: -1 },
+        $pull: { redemptions: { order: orderId } },
+      }
+    );
+  } catch (err) {
+    console.error("Error releasing coupon use:", err);
+  }
+};

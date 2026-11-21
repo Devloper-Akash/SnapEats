@@ -7,7 +7,7 @@ import mongoose from "mongoose";
 import { sendDeliveryOtpMail } from "../utils/mail.js";
 import Razorpay from "razorpay";
 import dotenv from "dotenv";
-import { CouponError, quoteCoupon, reserveCouponUse } from "../services/coupon.service.js";
+import { CouponError, quoteCoupon, reserveCouponUse, releaseCouponUse } from "../services/coupon.service.js";
 
 dotenv.config();
 
@@ -263,8 +263,15 @@ export const verifyPayment = async (req, res) => {
 export const getMyOrders = async (req, res) => {
   try {
     const user = await User.findById(req.userId);
+    const validOrderMatch = {
+      $or: [
+        { paymentMethod: "cod" },
+        { paymentMethod: "online", payment: true },
+      ],
+    };
+
     if (user.role == "user") {
-      const orders = await Order.find({ user: req.userId })
+      const orders = await Order.find({ user: req.userId, ...validOrderMatch })
         .sort({ createdAt: -1 })
         .populate("shopOrders.shop", "name")
         .populate("shopOrders.owner", "name email mobile")
@@ -273,7 +280,7 @@ export const getMyOrders = async (req, res) => {
 
       return res.status(200).json(orders);
     } else if (user.role == "owner") {
-      const orders = await Order.find({ "shopOrders.owner": req.userId })
+      const orders = await Order.find({ "shopOrders.owner": req.userId, ...validOrderMatch })
         .sort({ createdAt: -1 })
         .populate("shopOrders.shop", "name")
         .populate("user")
@@ -670,12 +677,44 @@ export const getOrderById = async (req, res) => {
       })
       .lean();
 
-    if (!order) {
+    if (!order || (order.paymentMethod === "online" && !order.payment)) {
       return res.status(404).json({ message: "Order Not Found" });
     }
     res.status(200).json(order);
   } catch (error) {
     res.status(500).json({ message: `Get Order By Id Error ${error}` });
+  }
+};
+
+export const cancelUnpaidOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ message: "orderId is required" });
+    }
+    const order = await Order.findOne({
+      _id: orderId,
+      user: req.userId,
+      paymentMethod: "online",
+      payment: false,
+    });
+    if (!order) {
+      return res.status(200).json({ message: "No unpaid order to cancel" });
+    }
+
+    if (order.coupon?.couponId) {
+      await releaseCouponUse({
+        couponId: order.coupon.couponId,
+        orderId: order._id,
+      });
+    }
+
+    await Order.deleteOne({ _id: order._id });
+
+    return res.status(200).json({ message: "Unpaid order cancelled successfully" });
+  } catch (error) {
+    console.error("Cancel unpaid order error:", error);
+    return res.status(500).json({ message: `Cancel unpaid order error: ${error.message || error}` });
   }
 };
 
