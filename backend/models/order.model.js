@@ -81,6 +81,16 @@ const orderSchema = new mongoose.Schema({
         deliverySavings:{type:Number, default:0},
         totalSavings:{type:Number, default:0}
     },
+    cancellationStatus:{
+      type:String,
+      enum:["none","processing","cancelled"],
+      default:"none"
+    },
+    cancelReason:{type:String, maxlength:500, default:""},
+    cancellationRequestedAt:{type:Date, default:null},
+    cancelledAt:{type:Date, default:null},
+    refundId:{type:String, default:""},
+    refundStatus:{type:String, default:""},
     razorpayOrderId:{
         type:String,
         default:""

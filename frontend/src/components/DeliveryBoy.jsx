@@ -186,12 +186,23 @@ const DeliveryBoy = () => {
     };
     const handleStatusUpdate = (data) => {
       if (data?.status === "delivered") handleTodayDeliveries();
+      if (data?.status === "cancelled") {
+        getAssignments();
+        getCurrentOrder();
+      }
+    };
+    const handleAssignmentCancelled = (data) => {
+      setAvailableAssignments((previous) =>
+        previous ? previous.filter((a) => String(a.assignmentId || a._id) !== String(data.assignmentId)) : []
+      );
     };
     socket?.on("newAssignment", handleNewAssignment);
     socket?.on("order-status-updated", handleStatusUpdate);
+    socket?.on("assignmentCancelled", handleAssignmentCancelled);
     return () => {
       socket?.off("newAssignment", handleNewAssignment);
       socket?.off("order-status-updated", handleStatusUpdate);
+      socket?.off("assignmentCancelled", handleAssignmentCancelled);
     };
   }, [socket, userData?._id]);
 

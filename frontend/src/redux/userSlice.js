@@ -81,7 +81,7 @@ const userSlice = createSlice({
             const updatedOrder = action.payload;
             if (!updatedOrder?._id) return;
             state.myOrders = state.myOrders?.map((order) =>
-                order._id === updatedOrder._id ? updatedOrder : order
+                String(order._id) === String(updatedOrder._id) ? updatedOrder : order
             ) || [];
         },
 

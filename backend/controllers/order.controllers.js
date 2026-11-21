@@ -613,10 +613,52 @@ export const acceptOrder = async (req, res) => {
         .json({ message: "You have already assigned to another order" });
     }
 
-    assignment.assignTo = req.userId;
-    assignment.status = "assigned";
-    assignment.acceptedAt = new Date();
-    await assignment.save();
+    const alreadyAcceptedByThisDriver = assignment.status === "assigned" && String(assignment.assignTo) === String(req.userId);
+    const orderBeforeAccept = await Order.findById(assignment.order);
+    const shopOrderBeforeAccept = orderBeforeAccept?.shopOrders.id(assignment.shopOrderId);
+    if (
+      !orderBeforeAccept ||
+      !shopOrderBeforeAccept ||
+      ["cancelled", "delivered"].includes(shopOrderBeforeAccept.status) ||
+      ["processing", "cancelled"].includes(orderBeforeAccept.cancellationStatus)
+    ) {
+      return res.status(409).json({ message: "This order has already been cancelled or completed." });
+    }
+
+    if (!alreadyAcceptedByThisDriver) {
+      const claimedAssignment = await deliveryAssignment.findOneAndUpdate(
+        { _id: assignment._id, status: "brodcasted", assignTo: null },
+        { $set: { assignTo: req.userId, status: "assigned", acceptedAt: new Date() } },
+        { new: true },
+      );
+      if (!claimedAssignment) {
+        return res.status(409).json({ message: "This delivery offer is no longer available." });
+      }
+    }
+
+    const orderAssignment = await Order.updateOne(
+      {
+        _id: assignment.order,
+        cancellationStatus: { $nin: ["processing", "cancelled"] },
+        shopOrders: { $elemMatch: {
+          _id: assignment.shopOrderId,
+          status: { $nin: ["cancelled", "delivered"] },
+          assignedDeliveryBoy: { $in: [null, req.userId] },
+        } },
+      },
+      { $set: { "shopOrders.$.assignedDeliveryBoy": req.userId } },
+    );
+    if (!orderAssignment.modifiedCount) {
+      const existingAssignment = await Order.exists({
+        _id: assignment.order,
+        cancellationStatus: { $nin: ["processing", "cancelled"] },
+        shopOrders: { $elemMatch: { _id: assignment.shopOrderId, assignedDeliveryBoy: req.userId, status: { $nin: ["cancelled", "delivered"] } } },
+      });
+      if (!existingAssignment) {
+        await deliveryAssignment.updateOne({ _id: assignment._id, assignTo: req.userId }, { $set: { status: "completed" } });
+        return res.status(409).json({ message: "This order has already been cancelled or assigned." });
+      }
+    }
 
     const order = await Order.findById(assignment.order);
     if (!order) {
@@ -624,10 +666,6 @@ export const acceptOrder = async (req, res) => {
     }
 
     const shopOrder = order.shopOrders.id(assignment.shopOrderId);
-    if (shopOrder) {
-      shopOrder.assignedDeliveryBoy = req.userId;
-      await order.save();
-    }
 
     const deliveryBoy = await User.findById(req.userId).select(
       "fullName mobile email location"
@@ -770,6 +808,197 @@ export const cancelUnpaidOrder = async (req, res) => {
   } catch (error) {
     console.error("Cancel unpaid order error:", error);
     return res.status(500).json({ message: `Cancel unpaid order error: ${error.message || error}` });
+  }
+};
+
+export const cancelCustomerOrder = async (req, res) => {
+  let orderId;
+  try {
+    const user = await User.findById(req.userId).select("role");
+    if (!user) {
+      return res.status(401).json({ message: "Please log in to cancel your order." });
+    }
+
+    orderId = String(req.body.orderId || "");
+    const reason = String(req.body.reason || "").trim();
+    if (!mongoose.isValidObjectId(orderId)) {
+      return res.status(400).json({ message: "A valid order is required." });
+    }
+    if (reason.length < 3 || reason.length > 500) {
+      return res.status(400).json({ message: "Please provide a cancellation reason (up to 500 characters)." });
+    }
+
+    const order = await Order.findOne({ _id: orderId, user: req.userId });
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    if (order.cancellationStatus === "cancelled" || order.shopOrders.every((shopOrder) => shopOrder.status === "cancelled")) {
+      return res.status(409).json({ message: "This order has already been cancelled." });
+    }
+
+    // Allow re-claiming if a prior cancellation attempt crashed or is older than 30 seconds
+    const isStaleLock =
+      order.cancellationStatus === "processing" &&
+      order.cancellationRequestedAt &&
+      Date.now() - new Date(order.cancellationRequestedAt).getTime() > 30000;
+
+    if (order.cancellationStatus === "processing" && !isStaleLock) {
+      return res.status(409).json({ message: "Your cancellation is already being processed. Please wait a moment." });
+    }
+
+    if (order.shopOrders.some((shopOrder) => shopOrder.status === "delivered")) {
+      return res.status(409).json({ message: "This order can no longer be cancelled because it has already been delivered." });
+    }
+    if (order.shopOrders.some((shopOrder) => Boolean(shopOrder.assignedDeliveryBoy))) {
+      return res.status(409).json({ message: "A delivery partner has already been assigned, so this order can no longer be cancelled." });
+    }
+
+    const shopOrderIds = order.shopOrders.map((shopOrder) => shopOrder._id);
+    const activeAssignment = await deliveryAssignment.exists({
+      order: order._id,
+      shopOrderId: { $in: shopOrderIds },
+      status: "assigned",
+      assignTo: { $ne: null },
+    });
+    if (activeAssignment) {
+      return res.status(409).json({ message: "A delivery partner has already been assigned, so this order can no longer be cancelled." });
+    }
+
+    // Atomically claim the order for cancellation
+    const claimedOrder = await Order.findOneAndUpdate(
+      {
+        _id: order._id,
+        user: req.userId,
+        $or: [
+          { cancellationStatus: { $in: ["none", null] } },
+          { cancellationStatus: "processing", cancellationRequestedAt: { $lt: new Date(Date.now() - 30000) } },
+        ],
+        $and: [
+          { shopOrders: { $not: { $elemMatch: { assignedDeliveryBoy: { $exists: true, $ne: null } } } } },
+          { shopOrders: { $not: { $elemMatch: { status: "delivered" } } } },
+        ],
+      },
+      { $set: { cancellationStatus: "processing", cancelReason: reason, cancellationRequestedAt: new Date() } },
+      { returnDocument: "after" },
+    );
+    if (!claimedOrder) {
+      return res.status(409).json({ message: "A delivery partner was assigned or the order changed. This order can no longer be cancelled." });
+    }
+
+    let refund = null;
+    let refundNote = "";
+    if (order.paymentMethod === "online" && order.payment && order.razorpayPaymentId) {
+      const receipt = `cancel_${order._id}`;
+      try {
+        if (!instance) {
+          instance = new Razorpay({
+            key_id: process.env.RAZORPAY_KEY_ID,
+            key_secret: process.env.RAZORPAY_KEY_SECRET,
+          });
+        }
+        refund = await instance.payments.refund(order.razorpayPaymentId, {
+          receipt,
+          notes: { order_id: String(order._id), reason: reason.slice(0, 500) },
+        });
+      } catch (refundErr) {
+        console.warn("Razorpay refund initial error:", refundErr?.message || refundErr);
+        try {
+          if (typeof instance?.payments?.fetchMultipleRefund === "function") {
+            const previousRefunds = await instance.payments.fetchMultipleRefund(order.razorpayPaymentId);
+            refund = previousRefunds?.items?.find((entry) => entry.receipt === receipt) || null;
+          }
+        } catch (fetchErr) {
+          console.warn("Razorpay fetchMultipleRefund error:", fetchErr?.message || fetchErr);
+        }
+
+        if (!refund) {
+          const errMsg = String(refundErr?.message || refundErr?.description || "");
+          if (errMsg.toLowerCase().includes("already refunded")) {
+            refundNote = "Payment was already refunded.";
+          } else {
+            console.error("Online refund error for cancelled order:", order._id, refundErr);
+            refundNote = "Automatic refund will be processed manually by our team.";
+          }
+        }
+      }
+    }
+
+    claimedOrder.shopOrders.forEach((shopOrder) => {
+      if (shopOrder.status !== "delivered") {
+        shopOrder.status = "cancelled";
+      }
+    });
+    claimedOrder.cancellationStatus = "cancelled";
+    claimedOrder.cancelledAt = new Date();
+    claimedOrder.refundId = refund?.id || "";
+    claimedOrder.refundStatus = refund?.status || (refundNote ? "pending_manual" : "");
+    await claimedOrder.save();
+
+    // Clean up broadcasted delivery assignments
+    const assignmentsToCancel = await deliveryAssignment.find({
+      order: order._id,
+      shopOrderId: { $in: shopOrderIds },
+      status: "brodcasted",
+    });
+
+    await deliveryAssignment.updateMany(
+      { order: order._id, shopOrderId: { $in: shopOrderIds }, status: "brodcasted" },
+      { $set: { status: "completed" } },
+    );
+    if (order.coupon?.couponId) {
+      await releaseCouponUse({ couponId: order.coupon.couponId, orderId: order._id });
+    }
+
+    await claimedOrder.populate("shopOrders.shop", "name address");
+    await claimedOrder.populate("shopOrders.shopOrderItems.item", "name image price");
+    await claimedOrder.populate("shopOrders.assignedDeliveryBoy", "fullName email mobile");
+
+    const io = req.app.get("io");
+    if (io) {
+      // Notify broadcasted delivery boys so the broadcast disappears from their screen immediately
+      assignmentsToCancel.forEach((assignment) => {
+        assignment.brodcastedTo?.forEach((deliveryBoyId) => {
+          io.to(String(deliveryBoyId)).emit("assignmentCancelled", {
+            assignmentId: assignment._id,
+            orderId: order._id,
+          });
+        });
+      });
+
+      claimedOrder.shopOrders.forEach((shopOrder) => {
+        const ownerId = (shopOrder.owner?._id || shopOrder.owner)?.toString();
+        const payload = {
+          orderId: claimedOrder._id,
+          shopId: shopOrder._id,
+          shopOrderId: shopOrder._id,
+          status: "cancelled",
+          userId: req.userId,
+          cancelReason: reason,
+        };
+        if (ownerId) io.to(ownerId).emit("update-status", payload);
+        io.to(String(req.userId)).emit("update-status", payload);
+        io.emit("order-status-updated", payload);
+      });
+    }
+
+    const message = refund
+      ? "Order cancelled. Your refund has been started."
+      : refundNote
+      ? `Order cancelled. ${refundNote}`
+      : "Order cancelled successfully.";
+
+    return res.status(200).json({
+      message,
+      order: claimedOrder,
+    });
+  } catch (error) {
+    if (orderId) {
+      await Order.updateOne({ _id: orderId, user: req.userId, cancellationStatus: "processing" }, {
+        $set: { cancellationStatus: "none", cancelReason: "", cancellationRequestedAt: null },
+      }).catch(() => {});
+    }
+    console.error("Cancel customer order error:", error);
+    return res.status(500).json({
+      message: error?.message ? `Failed to cancel order: ${error.message}` : "We couldn’t cancel this order. Please try again.",
+    });
   }
 };
 
