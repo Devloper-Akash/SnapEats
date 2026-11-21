@@ -22,6 +22,7 @@ import useGetMyOrders from './hooks/useGetMyOrders';
 import useUpdateLocation from './hooks/useUpdateLocation';
 import TrackOrderPage from './pages/TrackOrderPage';
 import Shop from './pages/Shop';
+import CustomerFooter from './components/CustomerFooter';
 import { useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { setSocket } from './redux/userSlice';
@@ -56,7 +57,9 @@ const App = () => {
   }, [userData?._id]);
 
   return (
-    <Routes>
+    <div className="flex min-h-screen flex-col">
+      <div className="flex-1">
+        <Routes>
       <Route path='/signup' element={!userData ? <SignUp /> : <Navigate to={"/"} />}></Route>
       <Route path='/register' element={<Navigate to="/signup" />}></Route>
       <Route path='/signin' element={!userData ? <SignIn /> : <Navigate to={"/"} />}></Route>
@@ -73,7 +76,10 @@ const App = () => {
       <Route path='/track-order/:orderId' element={userData ? <TrackOrderPage /> : <Navigate to={"/signin"} />}></Route>
       <Route path='/shop/:shopId' element={userData ? <Shop /> : <Navigate to={"/signin"} />}></Route>
       <Route path='*' element={<Navigate to="/" replace />}></Route>
-    </Routes>
+        </Routes>
+      </div>
+      <CustomerFooter userData={userData} />
+    </div>
   )
 }
 

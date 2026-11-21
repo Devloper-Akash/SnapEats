@@ -90,3 +90,26 @@ export const getShopByCity = async(req,res)=>{
     return res.status(500).json({ message: `Get Shop by City Error ${error}` });
   }
 }
+
+export const getFeaturedShops = async (_req, res) => {
+  try {
+    const shops = await Shop.find({
+      approvalStatus: "approved",
+      isSuspended: { $ne: true },
+      items: { $exists: true, $ne: [] },
+    })
+      .select("name city image items")
+      .sort({ updatedAt: -1 })
+      .limit(8)
+      .populate({
+        path: "items",
+        select: "name image category",
+        options: { sort: { updatedAt: -1 } },
+        perDocumentLimit: 1,
+      });
+
+    return res.status(200).json({ shops: shops.filter((shop) => shop.items.length) });
+  } catch (error) {
+    return res.status(500).json({ message: `Get Featured Shops Error ${error.message || error}` });
+  }
+};

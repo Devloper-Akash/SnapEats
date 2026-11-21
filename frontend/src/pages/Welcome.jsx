@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { ArrowDown, ArrowRight, Bike, Clock3, MapPin, Star, Utensils, Wallet } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { Button } from "../components/ui/button";
 import { categories } from "../category.js";
 import heroFood from "../assets/image1.jpg";
@@ -10,9 +12,19 @@ import momoFood from "../assets/momo.svg";
 const featuredCategories = categories.filter(({ category }) =>
   ["Snacks", "Main Course", "Pizzas", "Burgers", "Chinese", "South Indian"].includes(category),
 );
+const serverUrl = import.meta.env.VITE_SERVER_URL || "https://snapeats-backend-g91m.onrender.com";
 
 const Welcome = () => {
   const navigate = useNavigate();
+  const [featuredShops, setFeaturedShops] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    axios.get(`${serverUrl}/api/shop/featured`, { timeout: 10000 })
+      .then(({ data }) => { if (active) setFeaturedShops(data.shops || []); })
+      .catch(() => { if (active) setFeaturedShops([]); });
+    return () => { active = false; };
+  }, []);
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#fff9f6] text-[#26221f]">
@@ -148,6 +160,27 @@ const Welcome = () => {
               <div><h3 className="text-xs font-extrabold text-[#3d332d]">Order updates</h3><p className="mt-1 text-[11px] leading-4 text-[#8c8077]">Follow your order on its way to your door.</p></div>
             </article>
           </div>
+
+          {featuredShops.length > 0 && <div className="mt-5 border-t border-[#f0e2d9] pt-4">
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div><h2 className="text-sm font-extrabold text-[#302923] sm:text-base">Local kitchens, signature bites</h2><p className="mt-0.5 text-[11px] text-[#94877d]">A peek at restaurants and dishes on SnapEats.</p></div>
+              <button type="button" onClick={() => navigate("/signup")} className="shrink-0 text-[11px] font-bold text-[#c65336] transition hover:text-[#e64b2e]">Explore all <ArrowRight size={12} className="ml-0.5 inline" /></button>
+            </div>
+            <div className="flex snap-x gap-3 overflow-x-auto pb-2">
+              {featuredShops.map((shop) => {
+                const dish = shop.items?.[0];
+                if (!dish) return null;
+                return <article key={shop._id} className="flex min-w-[250px] snap-start items-center gap-3 rounded-2xl border border-[#f1e2d9] bg-white p-2.5 shadow-[0_10px_25px_-22px_rgba(75,39,23,0.45)] sm:min-w-[285px]">
+                  <img src={dish.image} alt={dish.name} className="size-[68px] shrink-0 rounded-xl object-cover sm:size-[76px]" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[10px] font-bold uppercase tracking-[0.1em] text-[#c66a42]">{shop.name}</p>
+                    <h3 className="mt-1 truncate text-sm font-extrabold text-[#392f29]">{dish.name}</h3>
+                    <div className="mt-1.5 flex items-center gap-1 text-[10px] text-[#8b7f76]"><MapPin size={11} className="shrink-0 text-[#e45a3a]" /><span className="truncate">{shop.city}{dish.category ? ` · ${dish.category}` : ""}</span></div>
+                  </div>
+                </article>;
+              })}
+            </div>
+          </div>}
         </div>
       </section>
 
@@ -159,26 +192,6 @@ const Welcome = () => {
         </div>
       </section>
 
-      <footer id="footer" className="bg-[#26221f] text-white">
-        <div className="mx-auto flex max-w-7xl flex-col gap-8 px-5 py-9 sm:px-8 md:flex-row md:items-center md:justify-between lg:px-12">
-          <div>
-            <a href="/" className="logo-smoke text-2xl font-extrabold tracking-tight">SnapEats</a>
-            <p className="mt-2 max-w-sm text-sm leading-6 text-white/60">A little closer to your next favorite meal.</p>
-          </div>
-          <div className="flex flex-wrap gap-x-7 gap-y-3 text-sm font-semibold text-white/75">
-            <a className="transition hover:text-white" href="#discover">Discover</a>
-            <a className="transition hover:text-white" href="#how-it-works">How it works</a>
-            <button className="transition hover:text-white" onClick={() => navigate("/signin")}>Log in</button>
-            <button className="transition hover:text-white" onClick={() => navigate("/signup")}>Create account</button>
-          </div>
-        </div>
-        <div className="border-t border-white/10">
-          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-4 text-xs text-white/45 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-12">
-            <span>© {new Date().getFullYear()} SnapEats. Made for good food days.</span>
-            <span>Fresh meals. Friendly delivery. Right around the corner.</span>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 };
