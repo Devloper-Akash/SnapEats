@@ -14,6 +14,22 @@ import {
 
 const defaultMapCenter = { lat: 20.5937, lon: 78.9629 };
 
+const getLocationServiceError = (error, action, gpsCoordinatesFound = false) => {
+  const status = error.response?.status;
+  if (status === 401 || status === 403) {
+    return "The location service rejected its API key. Please check the location API configuration.";
+  }
+  if (status === 429) {
+    return "The location service is busy. Please wait a moment and try again.";
+  }
+  if (!error.response) {
+    return gpsCoordinatesFound
+      ? `GPS coordinates were found, but we couldn’t ${action} because the address service could not be reached. Check your connection or search for your address.`
+      : `We couldn’t ${action} because the address service could not be reached. Check your connection and try again.`;
+  }
+  return `We couldn’t ${action}. Please try again or search for your address.`;
+};
+
 function RecenterMap({ position }) {
   const map = useMap();
 
@@ -101,8 +117,8 @@ const LocationPicker = ({ open, onClose }) => {
       } else {
         setResults(validPlaces);
       }
-    } catch {
-      setError("We couldn’t search that location. Please try again.");
+    } catch (error) {
+      setError(getLocationServiceError(error, "search that location"));
     } finally {
       setLoading(false);
     }
@@ -153,8 +169,8 @@ const LocationPicker = ({ open, onClose }) => {
           } else {
             setError("Location found, but we couldn’t identify its address.");
           }
-        } catch {
-          setError("We couldn’t look up your location. Please try again.");
+        } catch (error) {
+          setError(getLocationServiceError(error, "look up your location", true));
         } finally {
           setLocating(false);
         }
@@ -205,8 +221,8 @@ const LocationPicker = ({ open, onClose }) => {
       } else {
         setSelectedPlace({ ...place, ...nextPosition });
       }
-    } catch {
-      setError("We couldn’t look up this spot. Please try again.");
+    } catch (error) {
+      setError(getLocationServiceError(error, "look up this spot"));
     } finally {
       setResolvingPin(false);
     }
