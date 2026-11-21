@@ -35,6 +35,7 @@ function CheckOut() {
   const [couponQuote, setCouponQuote] = useState(null);
   const [couponMessage, setCouponMessage] = useState("");
   const [couponBusy, setCouponBusy] = useState(false);
+  const [couponCelebration, setCouponCelebration] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
@@ -56,6 +57,8 @@ function CheckOut() {
       setCouponQuote({ ...result.data, cartKey });
       setCouponInput(result.data.coupon.code);
       setCouponMessage(`${result.data.coupon.code} applied — you save ₹${Number(result.data.totalSavings).toFixed(2)}.`);
+      setCouponCelebration(true);
+      window.setTimeout(() => setCouponCelebration(false), 1300);
     } catch (error) {
       setCouponQuote(null);
       setCouponMessage(error.response?.data?.message || "Could not check this offer. Try again.");
@@ -494,7 +497,8 @@ function CheckOut() {
                     <span>Delivery fee</span><span className="font-semibold text-[#302923]">{deliveryFee === 0 ? <span className="text-[#3c8a58]">Free</span> : `₹${deliveryFee.toFixed(2)}`}</span>
                   </div>
                   {deliveryFee === 0 && <div className="rounded-xl bg-[#edf7ef] px-3 py-2 text-xs font-semibold text-[#34794b]">You’ve unlocked free delivery.</div>}
-                  <div className="rounded-2xl border border-[#f0e2d9] bg-[#fffaf6] p-3.5">
+                  <div className="relative rounded-2xl border border-[#f0e2d9] bg-[#fffaf6] p-3.5">
+                    {couponCelebration && <div className="coupon-fireworks" aria-hidden="true"><span className="coupon-firework coupon-firework-one">{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ "--angle": `${index * 45}deg` }} />)}</span><span className="coupon-firework coupon-firework-two">{Array.from({ length: 8 }, (_, index) => <i key={index} style={{ "--angle": `${index * 45 + 22.5}deg` }} />)}</span></div>}
                     <div className="mb-2 flex items-center justify-between gap-2"><span className="text-xs font-bold text-[#51473f]">Have an offer code?</span>{appliedCoupon && <button type="button" onClick={removeCoupon} className="text-[11px] font-bold text-[#c25b40]">Remove</button>}</div>
                     {appliedCoupon ? <div className="flex items-center justify-between rounded-xl bg-white px-3 py-2"><span className="font-extrabold tracking-wide text-[#c65336]">{appliedCoupon.coupon.code}</span><span className="text-xs font-bold text-[#3c8a58]">−₹{Number(appliedCoupon.totalSavings).toFixed(2)}</span></div> : <div className="flex gap-2"><input aria-label="Offer code" value={couponInput} onChange={(event) => setCouponInput(event.target.value.toUpperCase())} onKeyDown={(event) => { if (event.key === "Enter") applyCoupon(); }} placeholder="Enter code" className="h-10 min-w-0 flex-1 rounded-xl border border-[#eadfd8] bg-white px-3 text-sm font-bold uppercase tracking-wide text-[#51473f] outline-none placeholder:font-medium placeholder:normal-case placeholder:tracking-normal focus:border-[#e99070]" /><button type="button" disabled={couponBusy} onClick={() => applyCoupon()} className="h-10 rounded-xl bg-[#34231b] px-4 text-xs font-bold text-white transition hover:bg-[#553526] disabled:opacity-60">{couponBusy ? "Checking…" : "Apply"}</button></div>}
                     {(couponMessage || (couponQuote && !appliedCoupon)) && <p role="status" className={`mt-2 text-[11px] leading-4 ${appliedCoupon ? "text-[#3c8a58]" : "text-[#a85a43]"}`}>{couponQuote && !appliedCoupon ? "Your cart changed. Apply the offer again." : couponMessage}</p>}

@@ -184,3 +184,46 @@
   .logo-smoke,
   .logo-smoke-mark { animation: none; }
 }
+
+.coupon-fireworks {
+  position: absolute;
+  z-index: 2;
+  top: 28px;
+  right: 28px;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.coupon-firework {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+}
+
+.coupon-firework-two { animation-delay: 100ms; }
+
+.coupon-firework i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff744d;
+  opacity: 0;
+  animation: coupon-firecracker 650ms ease-out both;
+  transform: rotate(var(--angle)) translateY(0) scale(.3);
+}
+
+.coupon-firework i:nth-child(3n) { background: #f6b849; }
+.coupon-firework i:nth-child(3n + 1) { background: #62ad75; }
+
+@keyframes coupon-firecracker {
+  12% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(var(--angle)) translateY(-25px) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .coupon-firework i { animation: none; }
+}
