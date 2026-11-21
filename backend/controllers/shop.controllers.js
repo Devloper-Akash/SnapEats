@@ -4,41 +4,58 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 export const createAndEditShop = async (req, res) => {
   try {
     const { name, city, state, address } = req.body;
-    let image;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ message: "Restaurant name is required" });
+    }
+    if (!city || !city.trim()) {
+      return res.status(400).json({ message: "City is required" });
+    }
+    if (!state || !state.trim()) {
+      return res.status(400).json({ message: "State is required" });
+    }
+    if (!address || !address.trim()) {
+      return res.status(400).json({ message: "Address is required" });
+    }
+
+    let image = null;
     if (req.file) {
-      console.log(req.file);
-      image = await uploadOnCloudinary(req.file.path);
+      try {
+        image = await uploadOnCloudinary(req.file.path);
+      } catch (uploadErr) {
+        console.error("Cloudinary upload failed:", uploadErr);
+      }
     }
 
     let shop = await Shop.findOne({ owner: req.userId });
     if (!shop) {
+      const defaultImage = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80";
       shop = await Shop.create({
-        name,
-        city,
-        state,
-        address,
-        image,
+        name: name.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        address: address.trim(),
+        image: image || defaultImage,
         owner: req.userId,
       });
     } else {
-      shop = await Shop.findByIdAndUpdate(
-        shop._id,
-        {
-          name,
-          city,
-          state,
-          address,
-          image,
-          owner: req.userId,
-        },
-        { new: true },
-      );
+      const updateData = {
+        name: name.trim(),
+        city: city.trim(),
+        state: state.trim(),
+        address: address.trim(),
+        owner: req.userId,
+      };
+      if (image) {
+        updateData.image = image;
+      }
+      shop = await Shop.findByIdAndUpdate(shop._id, updateData, { new: true });
     }
 
     await shop.populate("owner items");
     return res.status(201).json(shop);
   } catch (error) {
-    return res.status(500).json({ message: `Create Shop Error ${error}` });
+    console.error("Create Shop Error:", error);
+    return res.status(500).json({ message: `Create Shop Error: ${error.message || error}` });
   }
 };
 

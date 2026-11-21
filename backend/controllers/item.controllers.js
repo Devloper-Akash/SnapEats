@@ -7,18 +7,23 @@ export const addItem = async (req, res) => {
     const { name, category, foodType, price } = req.body;
     let image;
     if (req.file) {
-      image = await uploadOnCloudinary(req.file.path);
+      try {
+        image = await uploadOnCloudinary(req.file.path);
+      } catch (uploadErr) {
+        console.error("Item image upload error:", uploadErr);
+      }
     }
     const shop = await Shop.findOne({ owner: req.userId });
     if (!shop) {
       return res.status(400).json({ message: "Shop Not Found" });
     }
+    const defaultItemImage = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80";
     const item = await Item.create({
       name,
       category,
       foodType,
       price,
-      image,
+      image: image || defaultItemImage,
       shop: shop._id,
     });
 
@@ -30,7 +35,8 @@ export const addItem = async (req, res) => {
     ]);
     return res.status(200).json(shop);
   } catch (error) {
-    return res.status(500).json({ message: `Add Item Error ${error}` });
+    console.error("Add Item Error:", error);
+    return res.status(500).json({ message: `Add Item Error: ${error.message || error}` });
   }
 };
 
@@ -40,21 +46,24 @@ export const editItem = async (req, res) => {
     const { name, category, foodType, price } = req.body;
     let image;
     if (req.file) {
-      image = await uploadOnCloudinary(req.file.path);
+      try {
+        image = await uploadOnCloudinary(req.file.path);
+      } catch (uploadErr) {
+        console.error("Edit item image upload error:", uploadErr);
+      }
     }
-    const item = await Item.findByIdAndUpdate(
-      itemId,
-      {
-        name,
-        category,
-        foodType,
-        price,
-        image,
-      },
-      { new: true },
-    );
+    const updateData = {
+      name,
+      category,
+      foodType,
+      price,
+    };
+    if (image) {
+      updateData.image = image;
+    }
+    const item = await Item.findByIdAndUpdate(itemId, updateData, { new: true });
     if (!item) {
-      return res.status(500).json({ message: "Item Not Found" });
+      return res.status(404).json({ message: "Item Not Found" });
     }
     const shop = await Shop.findOne({ owner: req.userId }).populate({
       path: "items",
@@ -62,7 +71,8 @@ export const editItem = async (req, res) => {
     });
     return res.status(200).json(shop);
   } catch (error) {
-    return res.status(500).json({ message: `Edit Item Error ${error}` });
+    console.error("Edit Item Error:", error);
+    return res.status(500).json({ message: `Edit Item Error: ${error.message || error}` });
   }
 };
 

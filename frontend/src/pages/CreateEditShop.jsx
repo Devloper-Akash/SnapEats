@@ -61,7 +61,10 @@ const CreateEditShop = () => {
         withCredentials: true,
       });
       dispatch(setMyShopData(result.data));
-      setFeedback({ type: "success", text: "Restaurant details saved successfully." });
+      setFeedback({ type: "success", text: "Restaurant details saved successfully! Redirecting…" });
+      setTimeout(() => {
+        navigate("/");
+      }, 1200);
     } catch (error) {
       setFeedback({
         type: "error",
