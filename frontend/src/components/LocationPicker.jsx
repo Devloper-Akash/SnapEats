@@ -88,6 +88,70 @@ const LocationPicker = ({ open, onClose }) => {
 
   if (!open) return null;
 
+  const reverseGeocode = async (lat, lon) => {
+    // 1. Try Geoapify
+    if (apiKey) {
+      try {
+        const response = await axios.get(
+          "https://api.geoapify.com/v1/geocode/reverse",
+          {
+            params: { lat, lon, format: "json", apiKey },
+            withCredentials: false,
+          },
+        );
+        const place = response.data?.results?.[0];
+        if (place) {
+          return {
+            ...place,
+            lat,
+            lon,
+            city: place.city || place.town || place.village || place.county || place.state,
+            formatted: place.formatted || place.address_line1,
+          };
+        }
+      } catch (geoErr) {
+        console.warn("Geoapify reverse failed, falling back to OSM:", geoErr);
+      }
+    }
+
+    // 2. Fallback to OpenStreetMap Nominatim
+    try {
+      const osmRes = await axios.get(
+        "https://nominatim.openstreetmap.org/reverse",
+        {
+          params: { lat, lon, format: "json", addressdetails: 1 },
+          withCredentials: false,
+        },
+      );
+      if (osmRes.data) {
+        const addr = osmRes.data.address || {};
+        const city = addr.city || addr.town || addr.village || addr.suburb || addr.county || addr.state || "";
+        const formatted = osmRes.data.display_name || `${city}, ${addr.state || ""}`;
+        return {
+          lat,
+          lon,
+          city,
+          state: addr.state || "",
+          formatted,
+          address_line1: addr.road || osmRes.data.name || formatted,
+          name: osmRes.data.name || formatted,
+        };
+      }
+    } catch (osmErr) {
+      console.warn("OSM reverse failed:", osmErr);
+    }
+
+    // 3. Coordinate fallback so user location is NEVER lost
+    return {
+      lat,
+      lon,
+      city: currentCity || "Your Location",
+      state: currentState || "",
+      formatted: `Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+      address_line1: `Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`,
+    };
+  };
+
   const searchLocations = async (event) => {
     event.preventDefault();
     const searchText = query.trim();
@@ -95,23 +159,66 @@ const LocationPicker = ({ open, onClose }) => {
       setError("Enter a street address, neighborhood, or city.");
       return;
     }
-    if (!apiKey) {
-      setError("Location search is not configured right now.");
-      return;
-    }
 
     setLoading(true);
     setError("");
     setResults([]);
     try {
-      const response = await axios.get(
-        "https://api.geoapify.com/v1/geocode/search",
-        { params: { text: searchText, format: "geojson", limit: 5, apiKey } },
-      );
-      const places = response.data?.features?.map((feature) => feature.properties) || response.data?.results || [];
-      const validPlaces = places.filter(
-        (place) => Number.isFinite(Number(place.lat)) && Number.isFinite(Number(place.lon)),
-      );
+      let validPlaces = [];
+
+      // 1. Try Geoapify
+      if (apiKey) {
+        try {
+          const response = await axios.get(
+            "https://api.geoapify.com/v1/geocode/search",
+            {
+              params: { text: searchText, format: "geojson", limit: 5, apiKey },
+              withCredentials: false,
+            },
+          );
+          const places =
+            response.data?.features?.map((feature) => feature.properties) ||
+            response.data?.results ||
+            [];
+          validPlaces = places.filter(
+            (place) =>
+              Number.isFinite(Number(place.lat)) &&
+              Number.isFinite(Number(place.lon)),
+          );
+        } catch (geoapifyErr) {
+          console.warn("Geoapify search failed, trying OSM Nominatim:", geoapifyErr);
+        }
+      }
+
+      // 2. Fallback to OpenStreetMap Nominatim
+      if (!validPlaces.length) {
+        const osmRes = await axios.get(
+          "https://nominatim.openstreetmap.org/search",
+          {
+            params: { q: searchText, format: "json", limit: 5, addressdetails: 1 },
+            withCredentials: false,
+          },
+        );
+        if (Array.isArray(osmRes.data)) {
+          validPlaces = osmRes.data.map((item) => ({
+            lat: Number(item.lat),
+            lon: Number(item.lon),
+            city:
+              item.address?.city ||
+              item.address?.town ||
+              item.address?.village ||
+              item.address?.suburb ||
+              item.address?.county ||
+              item.address?.state ||
+              "",
+            state: item.address?.state || "",
+            formatted: item.display_name,
+            address_line1: item.display_name?.split(",")?.[0] || item.display_name,
+            name: item.name || item.display_name,
+          }));
+        }
+      }
+
       if (!validPlaces.length) {
         setError("No matching places found. Try a nearby street or city.");
       } else {
@@ -140,52 +247,55 @@ const LocationPicker = ({ open, onClose }) => {
     }
 
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        const nextPosition = { lat: coords.latitude, lon: coords.longitude };
-        setSelectedPosition(nextPosition);
-        setSelectedPlace(null);
-        if (!apiKey) {
-          setError("Address lookup is not configured, so this location can’t be saved yet.");
-          setLocating(false);
-          return;
-        }
 
-        try {
-          const response = await axios.get(
-            "https://api.geoapify.com/v1/geocode/reverse",
-            {
-              params: {
-                lat: nextPosition.lat,
-                lon: nextPosition.lon,
-                format: "json",
-                apiKey,
-              },
-            },
-          );
-          const place = response.data?.results?.[0];
-          if (place) {
-            setSelectedPlace({ ...place, ...nextPosition });
-          } else {
-            setError("Location found, but we couldn’t identify its address.");
-          }
-        } catch (error) {
-          setError(getLocationServiceError(error, "look up your location", true));
-        } finally {
-          setLocating(false);
-        }
-      },
-      (locationError) => {
+    const onCoordsReceived = async ({ coords }) => {
+      const nextPosition = { lat: coords.latitude, lon: coords.longitude };
+      setSelectedPosition(nextPosition);
+      try {
+        const place = await reverseGeocode(nextPosition.lat, nextPosition.lon);
+        setSelectedPlace(place);
+        setError("");
+      } catch {
+        setSelectedPlace({
+          lat: nextPosition.lat,
+          lon: nextPosition.lon,
+          city: currentCity || "Current Location",
+          state: currentState || "",
+          formatted: `Location (${nextPosition.lat.toFixed(4)}, ${nextPosition.lon.toFixed(4)})`,
+          address_line1: `Location (${nextPosition.lat.toFixed(4)}, ${nextPosition.lon.toFixed(4)})`,
+        });
+      } finally {
         setLocating(false);
-        if (locationError.code === locationError.PERMISSION_DENIED) {
-          setError("Allow location access in your browser, or search for an address instead.");
-        } else if (locationError.code === locationError.TIMEOUT) {
-          setError("Location took too long to find. Please try again or search for an address.");
-        } else {
-          setError("We couldn’t find your location. Please search for an address instead.");
-        }
-      },
-      { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 },
+      }
+    };
+
+    const onCoordsFailed = (locationError) => {
+      if (locationError.code === locationError.PERMISSION_DENIED) {
+        setLocating(false);
+        setError("Location permission was denied. Please allow location access in your browser or search for an address.");
+      } else {
+        // Retry with high accuracy false as second attempt
+        navigator.geolocation.getCurrentPosition(
+          onCoordsReceived,
+          (secondError) => {
+            setLocating(false);
+            if (secondError.code === secondError.PERMISSION_DENIED) {
+              setError("Location permission was denied. Please allow location access in your browser or search for an address.");
+            } else if (secondError.code === secondError.TIMEOUT) {
+              setError("Finding location timed out. Please drag the pin or search for your address.");
+            } else {
+              setError("Could not detect device location. Please search for an address or drag the map pin.");
+            }
+          },
+          { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 },
+        );
+      }
+    };
+
+    navigator.geolocation.getCurrentPosition(
+      onCoordsReceived,
+      onCoordsFailed,
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 },
     );
   };
 
@@ -197,32 +307,18 @@ const LocationPicker = ({ open, onClose }) => {
     setResolvingPin(true);
     setError("");
 
-    if (!apiKey) {
-      setResolvingPin(false);
-      setError("Address lookup is not configured, so this pin can’t be saved yet.");
-      return;
-    }
-
     try {
-      const response = await axios.get(
-        "https://api.geoapify.com/v1/geocode/reverse",
-        {
-          params: {
-            lat: nextPosition.lat,
-            lon: nextPosition.lon,
-            format: "json",
-            apiKey,
-          },
-        },
-      );
-      const place = response.data?.results?.[0];
-      if (!place) {
-        setError("We couldn’t identify this spot. Move the pin closer to a street or city.");
-      } else {
-        setSelectedPlace({ ...place, ...nextPosition });
-      }
-    } catch (error) {
-      setError(getLocationServiceError(error, "look up this spot"));
+      const place = await reverseGeocode(nextPosition.lat, nextPosition.lon);
+      setSelectedPlace(place);
+    } catch {
+      setSelectedPlace({
+        lat: nextPosition.lat,
+        lon: nextPosition.lon,
+        city: currentCity || "Pin Location",
+        state: currentState || "",
+        formatted: `Location (${nextPosition.lat.toFixed(4)}, ${nextPosition.lon.toFixed(4)})`,
+        address_line1: `Location (${nextPosition.lat.toFixed(4)}, ${nextPosition.lon.toFixed(4)})`,
+      });
     } finally {
       setResolvingPin(false);
     }

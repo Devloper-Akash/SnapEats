@@ -13,7 +13,7 @@ const useGetCity = () => {
   const apiKey = import.meta.env.VITE_GEOAPIKEY;
 
   useEffect(() => {
-    if (!apiKey || !navigator.geolocation || manualSelection) {
+    if (!navigator.geolocation || manualSelection) {
       return;
     }
 
@@ -23,22 +23,77 @@ const useGetCity = () => {
         try {
           const latitude = position.coords.latitude;
           const longitude = position.coords.longitude;
-          const result = await axios.get(
-            `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`,
-          );
+          let place = null;
+
+          // 1. Try Geoapify
+          if (apiKey) {
+            try {
+              const result = await axios.get(
+                `https://api.geoapify.com/v1/geocode/reverse?lat=${latitude}&lon=${longitude}&format=json&apiKey=${apiKey}`,
+                { withCredentials: false },
+              );
+              place = result?.data?.results?.[0];
+            } catch (err) {
+              console.warn("Geoapify failed in useGetCity, trying OSM:", err);
+            }
+          }
+
+          // 2. Fallback to OpenStreetMap Nominatim
+          if (!place) {
+            try {
+              const osmRes = await axios.get(
+                `https://nominatim.openstreetmap.org/reverse`,
+                {
+                  params: {
+                    lat: latitude,
+                    lon: longitude,
+                    format: "json",
+                    addressdetails: 1,
+                  },
+                  withCredentials: false,
+                },
+              );
+              if (osmRes.data) {
+                const addr = osmRes.data.address || {};
+                const city =
+                  addr.city ||
+                  addr.town ||
+                  addr.village ||
+                  addr.suburb ||
+                  addr.county ||
+                  addr.state ||
+                  "";
+                place = {
+                  city,
+                  state: addr.state,
+                  address_line1: addr.road || osmRes.data.name,
+                  formatted: osmRes.data.display_name,
+                };
+              }
+            } catch (osmErr) {
+              console.warn("OSM failed in useGetCity:", osmErr);
+            }
+          }
+
           if (ignore) return;
 
-          dispatch(setLocation({lat:latitude,lon:longitude}));
-          dispatch(setCurrentCity(result?.data?.results?.[0]?.city ?? null));
-          dispatch(setCurrentState(result?.data?.results?.[0]?.state ?? null));
-          dispatch(setCurrentAddress(result?.data?.results?.[0]?.address_line1 || result?.data?.results?.[0]?.address_line2 || null));
-          dispatch(setAddress(result?.data?.results?.[0]?.formatted ?? null));
+          dispatch(setLocation({ lat: latitude, lon: longitude }));
+          if (place) {
+            dispatch(setCurrentCity(place.city ?? null));
+            dispatch(setCurrentState(place.state ?? null));
+            dispatch(
+              setCurrentAddress(
+                place.address_line1 || place.address_line2 || place.formatted || null,
+              ),
+            );
+            dispatch(setAddress(place.formatted ?? null));
+          }
         } catch (error) {
-          console.log(error);
+          console.log("useGetCity error:", error);
         }
       },
       (error) => {
-        console.log(error);
+        console.log("Geolocation error in useGetCity:", error);
       },
       { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 },
     );

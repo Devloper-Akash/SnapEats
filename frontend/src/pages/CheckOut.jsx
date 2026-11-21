@@ -86,17 +86,65 @@ function CheckOut() {
 
   const getAddressByLatLng = async (lat, lng) => {
     try {
-      const result = await axios.get(
-        `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lng}&format=json&apiKey=${apiKey}`,
-      );
-      const place = result?.data?.results?.[0];
-      if (!place) return false;
-      dispatch(setAddress(place?.formatted ?? null));
-      dispatch(setCurrentCity(place?.city ?? null));
-      dispatch(setCurrentState(place?.state ?? null));
-      dispatch(
-        setCurrentAddress(place?.address_line1 || place?.address_line2 || null),
-      );
+      let place = null;
+
+      // 1. Try Geoapify
+      if (apiKey) {
+        try {
+          const result = await axios.get(
+            `https://api.geoapify.com/v1/geocode/reverse?lat=${lat}&lon=${lng}&format=json&apiKey=${apiKey}`,
+            { withCredentials: false },
+          );
+          place = result?.data?.results?.[0];
+        } catch (err) {
+          console.warn("Geoapify reverse failed in CheckOut, trying OSM:", err);
+        }
+      }
+
+      // 2. Fallback to OpenStreetMap Nominatim
+      if (!place) {
+        try {
+          const osmRes = await axios.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            {
+              params: { lat, lon: lng, format: "json", addressdetails: 1 },
+              withCredentials: false,
+            },
+          );
+          if (osmRes.data) {
+            const addr = osmRes.data.address || {};
+            const city =
+              addr.city ||
+              addr.town ||
+              addr.village ||
+              addr.suburb ||
+              addr.county ||
+              addr.state ||
+              "";
+            place = {
+              city,
+              state: addr.state || "",
+              address_line1: addr.road || osmRes.data.name,
+              formatted: osmRes.data.display_name,
+            };
+          }
+        } catch (osmErr) {
+          console.warn("OSM reverse failed in CheckOut:", osmErr);
+        }
+      }
+
+      if (place) {
+        dispatch(setAddress(place.formatted ?? null));
+        dispatch(setCurrentCity(place.city ?? null));
+        dispatch(setCurrentState(place.state ?? null));
+        dispatch(
+          setCurrentAddress(place.address_line1 || place.address_line2 || place.formatted || null),
+        );
+        return true;
+      }
+
+      // 3. Keep coordinates even if geocoder fails
+      dispatch(setAddress(`Location (${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)})`));
       return true;
     } catch (error) {
       console.log(error);
@@ -114,21 +162,20 @@ function CheckOut() {
       return;
     }
 
-    // Try without high accuracy first (works better on desktops without GPS)
+    // Try with high accuracy first, fallback to standard accuracy
     navigator.geolocation.getCurrentPosition(
       (position) => handlePosition(position),
       () => {
-        // Retry with high accuracy as second attempt
         navigator.geolocation.getCurrentPosition(
           (position) => handlePosition(position),
           () =>
             setLocationMessage(
-              "Could not get location. Please enter your address or drag the pin.",
+              "Could not get location. Please allow location permissions or drag the map pin.",
             ),
-          { enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 },
+          { enableHighAccuracy: false, maximumAge: 60000, timeout: 10000 },
         );
       },
-      { enableHighAccuracy: false, maximumAge: 60000, timeout: 5000 },
+      { enableHighAccuracy: true, maximumAge: 30000, timeout: 8000 },
     );
   };
 
@@ -141,7 +188,7 @@ function CheckOut() {
       setLocationMessage(
         addressFound
           ? "Current location updated."
-          : "Location found, but address could not be loaded.",
+          : "Location coordinates updated.",
       );
     } catch {
       setLocationMessage("Could not find the address for this location.");
@@ -150,13 +197,42 @@ function CheckOut() {
 
   const getLatlngByAddress = async () => {
     try {
-      const result = await axios.get(
-        `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(addressInput)}&apiKey=${apiKey}`,
-      );
-      const { lat, lon } = result.data.features[0].properties;
-      dispatch(setManualSelection(true));
-      dispatch(setLocation({ lat, lon }));
-      await getAddressByLatLng(lat, lon);
+      let lat, lon;
+      if (apiKey) {
+        try {
+          const result = await axios.get(
+            `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(addressInput)}&apiKey=${apiKey}`,
+            { withCredentials: false },
+          );
+          const prop = result.data?.features?.[0]?.properties;
+          if (prop && Number.isFinite(Number(prop.lat))) {
+            lat = Number(prop.lat);
+            lon = Number(prop.lon);
+          }
+        } catch (err) {
+          console.warn("Geoapify search failed in CheckOut:", err);
+        }
+      }
+
+      if (lat == null || lon == null) {
+        const osmRes = await axios.get(
+          "https://nominatim.openstreetmap.org/search",
+          {
+            params: { q: addressInput, format: "json", limit: 1 },
+            withCredentials: false,
+          },
+        );
+        if (osmRes.data?.[0]) {
+          lat = Number(osmRes.data[0].lat);
+          lon = Number(osmRes.data[0].lon);
+        }
+      }
+
+      if (lat != null && lon != null) {
+        dispatch(setManualSelection(true));
+        dispatch(setLocation({ lat, lon }));
+        await getAddressByLatLng(lat, lon);
+      }
     } catch (error) {
       console.log(error);
     }
